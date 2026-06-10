@@ -114,7 +114,11 @@ class FakeMeetingAnalyzer:
     def _after_marker(text: str, marker: str) -> str:
         if marker not in text:
             return text
-        return text.split(marker, 1)[1].lstrip("是：:，,。 ") or text
+        remainder = text.split(marker, 1)[1].strip()
+        remainder = re.sub(r"^[：:，,。\\s]+", "", remainder).strip()
+        if remainder.startswith("是") and not remainder.startswith("是否"):
+            remainder = remainder[1:].lstrip("：:，,。 ")
+        return remainder or text
 
     @staticmethod
     def _looks_like_action(text: str) -> bool:

@@ -21,3 +21,4 @@ def test_fake_analyzer_extracts_schema_valid_outputs_with_evidence() -> None:
     assert all(d.evidence_refs for d in minutes.decisions)
     assert all(a.evidence_refs for a in minutes.action_items)
     assert minutes.action_items[0].owner in {"张三", "李四", "unassigned", None}
+    assert minutes.open_questions[0].text == "是否需要客户确认验收标准。"
