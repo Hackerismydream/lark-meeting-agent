@@ -8,6 +8,8 @@ The repository MUST include fixture-based evaluation assets for meeting intellig
 
 Fixtures SHOULD include transcript samples, expected decisions, expected action items, expected owners, expected due dates, and expected evidence segment IDs.
 
+Evaluations MUST run with pytest and pytest-asyncio where async behavior is involved.
+
 #### Scenario: Golden transcript test
 
 - GIVEN a transcript fixture with known action items
@@ -34,15 +36,15 @@ The system MUST define evaluation metrics for:
 - WHEN evaluation runs
 - THEN evidence coverage is computed as the percentage of decisions and action items with valid evidence.
 
-### Requirement: No Real Credentials in Evaluation
+### Requirement: No External Credentials in Evaluation
 
-Evaluation MUST run without real Lark credentials.
+Evaluation MUST run without real Lark credentials, real LLM API keys, Feishu channel connectivity, or nanobot gateway startup.
 
 #### Scenario: CI evaluation
 
 - GIVEN evaluation runs in CI
-- WHEN no Lark credentials are configured
-- THEN evaluation uses fake provider and fixture data.
+- WHEN no Lark credentials or LLM keys are configured
+- THEN evaluation uses fake provider, fake analyzer, and fixture data.
 
 ### Requirement: Regression Tests
 

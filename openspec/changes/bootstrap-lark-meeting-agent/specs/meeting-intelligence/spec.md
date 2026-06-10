@@ -23,13 +23,34 @@ Each segment SHOULD include speaker_name, speaker_id, start_time, and end_time w
 - THEN the system still creates ordered segments
 - AND timestamp fields remain null.
 
+#### Scenario: Malformed transcript
+
+- GIVEN a transcript cannot be parsed into ordered text segments
+- WHEN transcript normalization runs
+- THEN the workflow fails with `TranscriptNormalizationError`
+- AND no analyzer output or write plan is produced.
+
+### Requirement: MeetingAnalyzer Interface
+
+The system MUST define a `MeetingAnalyzer` interface with fake and optional LLM-backed implementations.
+
+`FakeMeetingAnalyzer` MUST support tests and evaluations without a real LLM API key.
+
+`LLMMeetingAnalyzer` MAY be added later, but its outputs MUST satisfy the same schema and evidence validation requirements.
+
+#### Scenario: Fake analyzer mode
+
+- GIVEN tests run without a real LLM API key
+- WHEN meeting analysis is requested
+- THEN `FakeMeetingAnalyzer` produces deterministic schema-valid output from fixtures.
+
 ### Requirement: Structured Meeting Minutes
 
 The system MUST generate meeting minutes as a validated schema.
 
 Meeting minutes MUST include title, one_sentence_summary, detailed_summary, chapters, decisions, action_items, risks, and open_questions.
 
-All LLM-produced meeting intelligence outputs MUST be validated by typed Pydantic schemas before use by workflows, APIs, storage, or write planning.
+All LLM-produced meeting intelligence outputs MUST be validated by typed Pydantic schemas before use by workflows, entrypoints, storage, or write planning.
 
 #### Scenario: Valid minutes output
 
@@ -65,6 +86,13 @@ Evidence references MUST point to source transcript segments.
 - THEN the decision is rejected or marked incomplete
 - AND is not presented as a confirmed decision.
 
+#### Scenario: Analyzer output without evidence
+
+- GIVEN analyzer output includes decisions or action items without evidence
+- WHEN evidence validation runs
+- THEN those items are rejected or marked incomplete
+- AND no write plan uses them as confirmed outcomes.
+
 ### Requirement: No Hallucinated Owners
 
 The system MUST NOT invent owners for action items.
@@ -73,7 +101,7 @@ If owner cannot be inferred from evidence, owner MUST be null or `unassigned`.
 
 #### Scenario: Missing owner
 
-- GIVEN a transcript says "需要补充接口文档"
+- GIVEN a transcript says "need to add API docs"
 - WHEN no owner is mentioned
 - THEN the extracted action item owner is null or `unassigned`
 - AND the system does not invent a person.
@@ -89,7 +117,7 @@ If due date cannot be inferred, due_date MUST be null.
 #### Scenario: Relative date
 
 - GIVEN a meeting on 2026-06-09
-- AND a transcript says "周五前补充接口文档"
+- AND a transcript says "add API docs by Friday"
 - WHEN due date resolution runs
 - THEN the due date is resolved according to the meeting date.
 

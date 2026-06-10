@@ -71,3 +71,37 @@ openspec/specs/*/spec.md
 7. 最后给 verdict：approve、approve with edits、reject。不要给模糊结论。
 
 请不要写代码。请不要泛泛夸项目。请以架构评审的方式指出当前 spec 哪里会导致重复造轮子、范围膨胀、测试不可控或与 nanobot 架构不兼容。
+
+Additional nanobot-specific review checks:
+
+1. Check whether FastAPI, SQLAlchemy, `app/`, and standalone API server assumptions were removed or deferred.
+2. Check whether AGENTS.md now describes nanobot v0.2.1 as the target runtime.
+3. Check whether the target implementation avoids rebuilding:
+   - agent loop,
+   - chat channel runtime,
+   - Feishu channel,
+   - WebUI,
+   - generic memory runtime,
+   - model routing,
+   - deployment system.
+4. Check whether the design explains how Lark Meeting Agent fits into nanobot:
+   - meeting domain module,
+   - controlled nanobot tool or command,
+   - skill instructions,
+   - deterministic PostMeetingWorkflow.
+5. Check whether the specs require research of these nanobot extension points before implementation:
+   - AgentLoop,
+   - CommandRouter,
+   - Tool and ToolLoader,
+   - Feishu channel,
+   - skills,
+   - memory,
+   - security/workspace policy,
+   - Python SDK,
+   - OpenAI-compatible API,
+   - gateway/WebUI.
+6. Check whether nanobot's general exec/shell tool is prevented from bypassing LarkToolAdapter.
+7. Check whether specs recommend `tools.exec.enable=false` or sandbox/restrict-to-workspace settings for production-like runs.
+8. Check whether Feishu channel access control such as `allowFrom` and group policy is included in safety requirements.
+9. Check whether meeting structured memory is separate from nanobot's generic Dream/conversation memory.
+10. Check whether the MVP entrypoint is a nanobot command/tool/chat action rather than a standalone REST endpoint.

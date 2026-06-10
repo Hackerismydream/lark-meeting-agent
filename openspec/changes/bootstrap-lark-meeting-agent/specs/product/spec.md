@@ -4,7 +4,7 @@
 
 ### Requirement: Product Scope
 
-The system MUST be a Feishu/Lark-native meeting workflow agent.
+The system MUST be a Feishu/Lark-native meeting workflow agent based on HKUDS/nanobot v0.2.1.
 
 It MUST support meeting-related workflows around:
 
@@ -18,6 +18,8 @@ It MUST support meeting-related workflows around:
 8. cross-meeting source-grounded QA.
 
 The MVP MUST focus on post-meeting processing only.
+
+Feishu bot delivery SHOULD reuse nanobot's Feishu channel. Standalone FastAPI MUST NOT be the MVP core architecture.
 
 #### Scenario: Post-meeting MVP flow
 
@@ -35,6 +37,13 @@ The MVP MUST focus on post-meeting processing only.
 - THEN the system MUST return a clear unsupported-feature response
 - AND MUST NOT attempt to join a live meeting.
 
+#### Scenario: FastAPI standalone request outside MVP
+
+- GIVEN a developer proposes building a standalone FastAPI service as the MVP core
+- WHEN the OpenSpec is reviewed
+- THEN the proposal is rejected or deferred
+- AND the system remains based on nanobot runtime.
+
 ### Requirement: Non-goals
 
 The MVP MUST NOT implement:
@@ -45,7 +54,10 @@ The MVP MUST NOT implement:
 4. complex frontend dashboard,
 5. arbitrary autonomous shell/tool calling,
 6. production multi-tenant permissions,
-7. vector database optimization.
+7. vector database optimization,
+8. independent Feishu channel runtime,
+9. independent generic memory runtime,
+10. independent WebUI or model-routing runtime.
 
 #### Scenario: User uploads audio
 
@@ -60,12 +72,13 @@ The system MUST demonstrate practical Agent engineering capability.
 
 It SHOULD emphasize:
 
-1. deterministic workflow orchestration,
-2. safe tool execution,
-3. schema validation,
-4. evidence preservation,
-5. fixture-based testing,
-6. source-grounded QA.
+1. nanobot extension reuse,
+2. deterministic workflow orchestration,
+3. safe tool execution,
+4. schema validation,
+5. evidence preservation,
+6. fixture-based testing,
+7. source-grounded QA.
 
 #### Scenario: Demo execution without external credentials
 
