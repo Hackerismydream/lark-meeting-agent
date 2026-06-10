@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+KEYCHAIN_SERVICE="${LMA_KEYCHAIN_SERVICE:-lark-meeting-agent.deepseek-api-key}"
+KEYCHAIN_ACCOUNT="${LMA_KEYCHAIN_ACCOUNT:-${USER}}"
+
+if [[ -z "${LMA_LLM_API_KEY:-}" ]]; then
+  LMA_LLM_API_KEY="$(security find-generic-password -a "$KEYCHAIN_ACCOUNT" -s "$KEYCHAIN_SERVICE" -w 2>/dev/null || true)"
+  export LMA_LLM_API_KEY
+fi
+
+if [[ -z "${LMA_LLM_API_KEY:-}" ]]; then
+  echo "Missing DeepSeek API key. Store it in macOS Keychain service '$KEYCHAIN_SERVICE' or export LMA_LLM_API_KEY." >&2
+  exit 2
+fi
+
+export LMA_LLM_BASE_URL="${LMA_LLM_BASE_URL:-https://api.deepseek.com}"
+export LMA_LLM_MODEL="${LMA_LLM_MODEL:-deepseek-v4-pro}"
+export LARK_CLI_NO_PROXY="${LARK_CLI_NO_PROXY:-1}"
+
+command -v lark-cli >/dev/null || {
+  echo "lark-cli is not installed or not on PATH." >&2
+  exit 2
+}
+
+if ! lark-cli auth status --verify >/dev/null; then
+  echo "lark-cli auth verification failed. Run lark-cli auth status --verify or re-login with lark-cli auth login." >&2
+  exit 2
+fi
+
+cd "$ROOT_DIR"
+
+subcommand="${1:-process}"
+case "$subcommand" in
+  process)
+    shift || true
+    exec uv run python -m nanobot.meeting.cli process \
+      --provider-mode cli \
+      --analyzer-mode llm \
+      "$@"
+    ;;
+  approve|qa)
+    shift || true
+    exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
+    ;;
+  status)
+    lark-cli auth status --verify
+    ;;
+  *)
+    exec uv run python -m nanobot.meeting.cli "$@"
+    ;;
+esac
