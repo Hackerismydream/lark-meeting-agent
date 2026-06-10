@@ -7,7 +7,18 @@ import json
 from pathlib import Path
 
 from nanobot.meeting.memory import MeetingMemoryStore
-from nanobot.meeting.schemas import MeetingRef, MeetingRefType, ProcessMeetingInput
+from nanobot.meeting.evals import LifecycleEvaluator
+from nanobot.meeting.live import LiveMeetingWorkflow
+from nanobot.meeting.prebrief import PreBriefWorkflow
+from nanobot.meeting.schemas import (
+    LiveEventKind,
+    LiveMeetingEvent,
+    MeetingRef,
+    MeetingRefType,
+    MeetingType,
+    PreBriefInput,
+    ProcessMeetingInput,
+)
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
 
@@ -35,6 +46,34 @@ def main(argv: list[str] | None = None) -> int:
 
     qa = sub.add_parser("qa")
     qa.add_argument("--question", required=True)
+
+    prebrief = sub.add_parser("prebrief")
+    prebrief.add_argument("--query")
+    prebrief.add_argument("--meeting-id")
+    prebrief.add_argument("--meeting-type", default="general", choices=[item.value for item in MeetingType])
+    prebrief.add_argument("--project")
+    prebrief.add_argument("--customer")
+    prebrief.add_argument("--provider-mode", default="fake", choices=["fake", "cli"])
+
+    live_start = sub.add_parser("live-start")
+    live_start.add_argument("--meeting-id", required=True)
+    live_start.add_argument("--title", default="live meeting")
+
+    live_ingest = sub.add_parser("live-ingest")
+    live_ingest.add_argument("--live-run-id", required=True)
+    live_ingest.add_argument("--meeting-id", required=True)
+    live_ingest.add_argument("--text", required=True)
+    live_ingest.add_argument("--speaker")
+    live_ingest.add_argument("--timestamp")
+    live_ingest.add_argument("--kind", default="transcript_delta", choices=[item.value for item in LiveEventKind])
+
+    live_qa = sub.add_parser("live-qa")
+    live_qa.add_argument("--live-run-id", required=True)
+    live_qa.add_argument("--question", required=True)
+
+    evaluate = sub.add_parser("evaluate")
+    evaluate.add_argument("--cases", default="tests/fixtures/meeting/evaluation/lifecycle_cases.json")
+    evaluate.add_argument("--output")
 
     args = parser.parse_args(argv)
     workspace = Path(args.workspace)
@@ -65,6 +104,45 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "qa":
         print(json.dumps(MeetingMemoryStore(workspace).qa(args.question).model_dump(mode="json"), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "prebrief":
+        ref = MeetingRef(
+            type=MeetingRefType.MEETING_ID if args.meeting_id else MeetingRefType.LATEST_ENDED,
+            value=args.meeting_id,
+            query=args.query,
+        )
+        result = PreBriefWorkflow(workspace, args.provider_mode).generate(
+            PreBriefInput(
+                meeting_ref=ref,
+                provider_mode=args.provider_mode,
+                meeting_type=MeetingType(args.meeting_type),
+                project=args.project,
+                customer=args.customer,
+            )
+        )
+        print(result.model_dump_json(indent=2))
+        return 0
+    if args.command == "live-start":
+        print(LiveMeetingWorkflow(workspace).start(args.meeting_id, args.title).model_dump_json(indent=2))
+        return 0
+    if args.command == "live-ingest":
+        event = LiveMeetingEvent(
+            event_id="cli-event",
+            live_run_id=args.live_run_id,
+            meeting_id=args.meeting_id,
+            kind=LiveEventKind(args.kind),
+            text=args.text,
+            speaker_name=args.speaker,
+            timestamp=args.timestamp,
+        )
+        print(LiveMeetingWorkflow(workspace).ingest(event).model_dump_json(indent=2))
+        return 0
+    if args.command == "live-qa":
+        print(LiveMeetingWorkflow(workspace).qa(args.live_run_id, args.question).model_dump_json(indent=2))
+        return 0
+    if args.command == "evaluate":
+        report = LifecycleEvaluator(workspace).evaluate_file(args.cases, args.output)
+        print(report.model_dump_json(indent=2))
         return 0
     return 1
 

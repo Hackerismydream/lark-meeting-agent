@@ -95,3 +95,39 @@ def test_cli_provider_builds_minutes_search_argument_list() -> None:
     assert "--query" in seen[0]
     assert "--start" in seen[0]
     assert "--as" in seen[0]
+
+
+def test_fake_provider_supports_lifecycle_read_operations(tmp_path: Path) -> None:
+    adapter = LarkToolAdapter.fake(workspace=tmp_path)
+
+    agenda = adapter.execute("calendar.agenda", {"query": "项目例会"})
+    tasks = adapter.execute("task.search", {"query": "项目"})
+    docs = adapter.execute("docs.search", {"query": "项目"})
+
+    assert agenda["items"]
+    assert tasks["items"][0]["status"] == "open"
+    assert docs["items"][0]["title"]
+
+
+def test_cli_provider_retries_transient_failures() -> None:
+    attempts = 0
+
+    def runner(argv: list[str], timeout_s: int) -> CommandResult:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return CommandResult(argv=argv, exit_code=1, stdout="", stderr="temporary")
+        return CommandResult(argv=argv, exit_code=0, stdout=json.dumps({"items": []}), stderr="")
+
+    provider = CliLarkProvider(runner=runner, retry_attempts=2)
+    result = provider.call("calendar.agenda", {"query": "项目"}, dry_run=False)
+
+    assert result == {"items": []}
+    assert attempts == 2
+
+
+def test_calendar_write_stays_rejected(tmp_path: Path) -> None:
+    adapter = LarkToolAdapter.fake(workspace=tmp_path)
+
+    with pytest.raises(ToolOperationNotAllowedError):
+        adapter.execute("calendar.create", {}, dry_run=True)

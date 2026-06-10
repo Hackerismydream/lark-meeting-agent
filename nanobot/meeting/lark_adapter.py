@@ -66,8 +66,42 @@ class FakeLarkProvider:
             return self._read_json("vc_notes.json")
         if operation == "minutes.search":
             return {"items": [], "data": {"items": []}}
+        if operation == "calendar.agenda":
+            return {
+                "items": [
+                    {
+                        "meeting_id": payload.get("meeting_id") or "meeting-1",
+                        "title": payload.get("query") or "项目例会",
+                        "start_time": payload.get("start") or "2026-06-10T10:00:00+08:00",
+                        "end_time": payload.get("end") or "2026-06-10T11:00:00+08:00",
+                        "attendees": [{"name": "Alice"}, {"name": "Bob"}],
+                    }
+                ]
+            }
+        if operation in {"task.search", "task.list"}:
+            return {
+                "items": [
+                    {
+                        "task_id": "task-1",
+                        "summary": "补充灰度方案风险清单",
+                        "owner": "Alice",
+                        "status": "open",
+                        "due_date": "2026-06-14",
+                    }
+                ]
+            }
+        if operation == "docs.search":
+            return {
+                "items": [
+                    {
+                        "doc": "doc-1",
+                        "title": "项目背景",
+                        "content": "上次会议决定先灰度上线，并补充风险清单。",
+                    }
+                ]
+            }
         if operation == "docs.fetch":
-            return {"content": self._read_json("vc_notes.json").get("transcript", "")}
+            return {"content": self._read_json("vc_notes.json").get("transcript", "") or "项目背景：先灰度上线。"}
         if operation == "docs.create":
             return {"url": "https://fake.larksuite.com/doc/fake-doc", "token": "fake-doc"}
         if operation == "task.create":
@@ -91,14 +125,23 @@ class CliLarkProvider:
         runner: Callable[[list[str], int], CommandResult] | None = None,
         timeout_s: int = 60,
         identity: str = "user",
+        retry_attempts: int = 1,
     ) -> None:
         self.runner = runner or SubprocessRunner()
         self.timeout_s = timeout_s
         self.identity = identity
+        self.retry_attempts = max(1, retry_attempts)
 
     def call(self, operation: str, payload: dict[str, Any], *, dry_run: bool = False) -> dict[str, Any]:
         argv = self._argv(operation, payload, dry_run=dry_run)
-        result = self.runner(argv, self.timeout_s)
+        last_result: CommandResult | None = None
+        for _ in range(self.retry_attempts):
+            last_result = self.runner(argv, self.timeout_s)
+            if last_result.exit_code == 0:
+                break
+        result = last_result
+        if result is None:
+            raise ToolExecutionError("lark-cli did not run")
         if result.exit_code != 0:
             raise ToolExecutionError(result.stderr or f"lark-cli exited {result.exit_code}")
         try:
@@ -142,6 +185,27 @@ class CliLarkProvider:
                 argv.extend(["--start", str(start)])
             if end := payload.get("end"):
                 argv.extend(["--end", str(end)])
+            return argv
+        if operation == "calendar.agenda":
+            argv = ["lark-cli", "calendar", "+agenda", *common]
+            if query := payload.get("query"):
+                argv.extend(["--query", str(query)])
+            if start := payload.get("start"):
+                argv.extend(["--start", str(start)])
+            if end := payload.get("end"):
+                argv.extend(["--end", str(end)])
+            return argv
+        if operation in {"task.search", "task.list"}:
+            argv = ["lark-cli", "task", "+list", *common]
+            if query := payload.get("query"):
+                argv.extend(["--query", str(query)])
+            if status := payload.get("status"):
+                argv.extend(["--status", str(status)])
+            return argv
+        if operation == "docs.search":
+            argv = ["lark-cli", "docs", "+search", "--api-version", "v2", *common]
+            if query := payload.get("query"):
+                argv.extend(["--query", str(query)])
             return argv
         if operation == "docs.fetch":
             return [
@@ -206,7 +270,17 @@ class CliLarkProvider:
 
 
 class LarkToolAdapter:
-    READ_OPS = {"auth.status", "vc.search", "vc.notes", "docs.fetch", "minutes.search", "calendar.agenda"}
+    READ_OPS = {
+        "auth.status",
+        "vc.search",
+        "vc.notes",
+        "docs.fetch",
+        "docs.search",
+        "minutes.search",
+        "calendar.agenda",
+        "task.search",
+        "task.list",
+    }
     WRITE_OPS = {"docs.create", "task.create", "im.send"}
 
     def __init__(self, provider: FakeLarkProvider | CliLarkProvider, workspace: Path | str) -> None:

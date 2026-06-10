@@ -9,6 +9,7 @@ from nanobot.meeting.analyzer import create_analyzer
 from nanobot.meeting.errors import MeetingNotFoundError, TranscriptNotFoundError
 from nanobot.meeting.lark_adapter import LarkToolAdapter
 from nanobot.meeting.memory import MeetingMemoryStore
+from nanobot.meeting.memory_workflow import MemoryWorkflow
 from nanobot.meeting.normalizer import TranscriptNormalizer
 from nanobot.meeting.schemas import (
     ApprovalStatus,
@@ -202,6 +203,7 @@ class PostMeetingWorkflow:
             write_plan=write_plan,
         )
         paths = self.memory.persist_run(run)
+        paths.extend(MemoryWorkflow(self.workspace).consolidate_run(run))
         paths.append(str(self.memory.save_run_snapshot(run)))
         return ProcessMeetingResult(
             run_id=run_id,

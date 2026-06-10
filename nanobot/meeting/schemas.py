@@ -26,6 +26,41 @@ class MeetingRefType(StrEnum):
     TRANSCRIPT_FILE = "transcript_file"
 
 
+class MeetingType(StrEnum):
+    CUSTOMER_MEETING = "customer_meeting"
+    PROJECT_SYNC = "project_sync"
+    REQUIREMENT_REVIEW = "requirement_review"
+    TECHNICAL_REVIEW = "technical_review"
+    INCIDENT_REVIEW = "incident_review"
+    ONE_ON_ONE = "one_on_one"
+    GENERAL = "general"
+
+
+class LiveEventKind(StrEnum):
+    TRANSCRIPT_DELTA = "transcript_delta"
+    TOPIC_CHANGE = "topic_change"
+    PARTICIPANT_JOIN = "participant_join"
+    PARTICIPANT_LEAVE = "participant_leave"
+    MARKER = "marker"
+
+
+class MemoryEntityType(StrEnum):
+    PROJECT = "project"
+    CUSTOMER = "customer"
+    PERSON = "person"
+
+
+class RetrievalKind(StrEnum):
+    TRANSCRIPT_SEGMENT = "transcript_segment"
+    DECISION = "decision"
+    ACTION_ITEM = "action_item"
+    RISK = "risk"
+    OPEN_QUESTION = "open_question"
+    MEMORY_CARD = "memory_card"
+    ENTITY_MEMORY = "entity_memory"
+    MINUTES = "minutes"
+
+
 class OperationType(StrEnum):
     DOC_CREATE = "docs.create"
     TASK_CREATE = "task.create"
@@ -226,6 +261,8 @@ class QASource(MeetingBaseModel):
     segment_id: str | None = None
     kind: str
     text: str
+    speaker_name: str | None = None
+    timestamp: str | None = None
 
 
 class QAAnswer(MeetingBaseModel):
@@ -239,6 +276,182 @@ class MeetingRef(MeetingBaseModel):
     type: MeetingRefType
     value: str | None = None
     query: str | None = None
+
+
+class PreBriefInput(MeetingBaseModel):
+    meeting_ref: MeetingRef
+    provider_mode: ProviderMode = ProviderMode.FAKE
+    meeting_type: MeetingType = MeetingType.GENERAL
+    project: str | None = None
+    customer: str | None = None
+    participants: list[str] = Field(default_factory=list)
+    time_range: dict[str, str] = Field(default_factory=dict)
+
+
+class PreBriefSection(MeetingBaseModel):
+    title: str
+    bullets: list[str] = Field(default_factory=list)
+    sources: list[QASource] = Field(default_factory=list)
+
+
+class PreBrief(MeetingBaseModel):
+    run_id: str
+    meeting: Meeting | None = None
+    meeting_type: MeetingType
+    goal: str
+    sections: list[PreBriefSection] = Field(default_factory=list)
+    suggested_questions: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    trace_path: str | None = None
+
+
+class LiveMeetingEvent(MeetingBaseModel):
+    event_id: str
+    live_run_id: str
+    meeting_id: str
+    kind: LiveEventKind
+    text: str | None = None
+    speaker_name: str | None = None
+    timestamp: str | None = None
+    segment_id: str | None = None
+
+
+class CandidateStatus(StrEnum):
+    CANDIDATE = "candidate"
+    CONFIRMED = "confirmed"
+    INCOMPLETE = "incomplete"
+
+
+class LiveDecisionCandidate(MeetingBaseModel):
+    candidate_id: str
+    text: str
+    status: CandidateStatus = CandidateStatus.CANDIDATE
+    evidence_refs: list[EvidenceRef]
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def evidence_required(cls, value: list[EvidenceRef]) -> list[EvidenceRef]:
+        if not value:
+            raise ValueError("live decision candidate requires evidence")
+        return value
+
+
+class LiveActionCandidate(MeetingBaseModel):
+    candidate_id: str
+    task: str
+    owner: str | None = None
+    due_date: str | None = None
+    status: CandidateStatus = CandidateStatus.CANDIDATE
+    evidence_refs: list[EvidenceRef]
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def evidence_required(cls, value: list[EvidenceRef]) -> list[EvidenceRef]:
+        if not value:
+            raise ValueError("live action candidate requires evidence")
+        return value
+
+
+class LiveMeetingState(MeetingBaseModel):
+    live_run_id: str
+    meeting_id: str
+    title: str = "live meeting"
+    current_topic: str | None = None
+    rolling_summary: str = ""
+    transcript_segments: list[TranscriptSegment] = Field(default_factory=list)
+    decision_candidates: list[LiveDecisionCandidate] = Field(default_factory=list)
+    action_candidates: list[LiveActionCandidate] = Field(default_factory=list)
+    risks: list[Risk] = Field(default_factory=list)
+    open_questions: list[OpenQuestion] = Field(default_factory=list)
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class LiveQAAnswer(QAAnswer):
+    live_run_id: str
+
+
+class EntityMemory(MeetingBaseModel):
+    entity_type: MemoryEntityType
+    entity_id: str
+    name: str
+    summary: str
+    source_meeting_ids: list[str] = Field(default_factory=list)
+    source_segment_ids: list[str] = Field(default_factory=list)
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class RetrievalQuery(MeetingBaseModel):
+    question: str
+    project: str | None = None
+    customer: str | None = None
+    person: str | None = None
+    time_range: dict[str, str] = Field(default_factory=dict)
+    kinds: list[RetrievalKind] = Field(default_factory=list)
+    limit: int = 8
+
+
+class RetrievalResultItem(MeetingBaseModel):
+    kind: RetrievalKind
+    text: str
+    score: float
+    source: QASource
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RetrievalResult(MeetingBaseModel):
+    query: RetrievalQuery
+    items: list[RetrievalResultItem] = Field(default_factory=list)
+    sufficient: bool = False
+
+
+class RunTraceEvent(MeetingBaseModel):
+    event_id: str
+    stage: str
+    message: str
+    data: dict[str, Any] = Field(default_factory=dict)
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class RunTrace(MeetingBaseModel):
+    run_id: str
+    workflow: str
+    events: list[RunTraceEvent] = Field(default_factory=list)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class EvaluationExpected(MeetingBaseModel):
+    decisions: list[str] = Field(default_factory=list)
+    action_items: list[str] = Field(default_factory=list)
+    qa_answer_terms: list[str] = Field(default_factory=list)
+    evidence_segment_ids: list[str] = Field(default_factory=list)
+
+
+class EvaluationCase(MeetingBaseModel):
+    case_id: str
+    meeting_type: MeetingType = MeetingType.GENERAL
+    transcript: str
+    question: str | None = None
+    expected: EvaluationExpected = Field(default_factory=EvaluationExpected)
+
+
+class EvaluationMetrics(MeetingBaseModel):
+    action_precision: float = 0.0
+    action_recall: float = 0.0
+    decision_precision: float = 0.0
+    decision_recall: float = 0.0
+    evidence_coverage: float = 0.0
+    schema_validation_success_rate: float = 0.0
+    tool_call_success_rate: float = 0.0
+    qa_source_accuracy: float = 0.0
+    safety_pass_rate: float = 0.0
+
+
+class EvaluationReport(MeetingBaseModel):
+    profile: str
+    metrics: EvaluationMetrics
+    passed: bool
+    case_results: list[dict[str, Any]] = Field(default_factory=list)
+    trace_paths: list[str] = Field(default_factory=list)
 
 
 class ProcessMeetingInput(MeetingBaseModel):
