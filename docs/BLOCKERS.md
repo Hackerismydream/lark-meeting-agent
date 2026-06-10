@@ -1,76 +1,81 @@
 # Blockers
 
-## Real Lark Read + Real LLM Dry-run Gate
+## Real Lark Meeting Transcript Gate
 
-Status: blocked by missing local Feishu/Lark user authorization.
+Status: blocked by missing real meeting transcript/minutes data in the currently authorized Feishu/Lark account.
 
-The repository implementation, OpenSpec delivery change, fake CI gates, local real-mode helper, and `lark-cli` bot identity are in place. The remaining continuous MVP gate requires reading a real ended meeting through `lark-cli vc +search --as user`, but the local `lark-cli` user identity is not authorized.
+The repository implementation, OpenSpec delivery change, fake CI gates, local real-mode helper, DeepSeek real LLM dry-run, and `lark-cli` user authorization are in place.
+
+The remaining external-data limitation is that the currently authorized Feishu/Lark user has meetings visible to `vc +search`, but those meetings do not have readable notes/minute transcript content. `minutes +search` is also authorized and returns zero accessible minute records for the checked date ranges.
 
 Observed command:
 
 ```bash
-LARK_CLI_NO_PROXY=1 lark-cli vc +search --format json --as user --query "项目例会"
+LARK_CLI_NO_PROXY=1 lark-cli vc +search --format json --as user --start 2026-05-01 --end 2026-06-10
 ```
 
-Observed failure:
+Observed result:
 
 ```text
-identity: user
-error.type: authentication
-error.subtype: token_missing
-message: need_user_authorization
-required scope: vc:meeting.search:read
+ok: true
+count: 7 visible VC meetings
 ```
 
-`lark-cli auth status --verify` confirms:
+Observed notes command:
+
+```bash
+LARK_CLI_NO_PROXY=1 lark-cli vc +notes --format json --as user --meeting-ids <meeting_id>
+```
+
+Observed result across the visible meetings:
 
 ```text
-bot identity: ready
-user identity: missing
+no notes available for this meeting; no minute file for this meeting
+or
+no permission to access this meeting's minutes
 ```
 
-## Attempted Fixes
+Observed minutes command:
+
+```bash
+LARK_CLI_NO_PROXY=1 lark-cli minutes +search --format json --as user --start 2020-01-01 --end 2026-06-10
+```
+
+Observed result:
+
+```text
+ok: true
+count: 0 accessible minute records
+```
+
+## Completed Fixes
 
 - Added `scripts/lma-real` to load the DeepSeek key from macOS Keychain and verify `lark-cli` auth.
 - Set `LARK_CLI_NO_PROXY=1` in the helper before credential checks.
 - Fixed `CliLarkProvider` to pass `--as user` for meeting read/write commands instead of relying on `defaultAs=auto`.
-- Started split-flow authorization for scope `vc:meeting.search:read`.
-- Generated QR-code authorization links for user authorization.
+- Completed user authorization for `vc:meeting.search:read`, `vc:note:read`, `vc:meeting.meetingevent:read`, `vc:record:readonly`, and `minutes:minutes.search:read`.
+- Added `minutes.search` support to `CliLarkProvider`.
+- Updated the workflow to parse `data.items` and `data.notes` style lark-cli responses and skip visible meetings without transcript content.
+- Hardened the LLM analyzer boundary to normalize common real-model JSON deviations while preserving strict internal schemas.
+- Verified real DeepSeek dry-run with the transcript fixture.
 - Avoided committing authorization URLs, device codes, or secrets.
 
 ## Remaining Decision or Action Needed
 
-The user must complete Feishu/Lark user authorization for:
+To complete the real Lark transcript gate, provide or create at least one Feishu/Lark meeting/minute that has readable transcript or minutes content for the authorized user.
 
-```text
-vc:meeting.search:read
-```
-
-After authorization, continue with:
+Then run:
 
 ```bash
-LARK_CLI_NO_PROXY=1 lark-cli auth login --device-code <fresh_device_code>
-scripts/lma-real process --latest-ended --query "项目例会" --create-doc --create-tasks --dry-run
-```
-
-If the prior device code expired, generate a fresh one:
-
-```bash
-LARK_CLI_NO_PROXY=1 lark-cli auth login --scope "vc:meeting.search:read" --no-wait --json
-```
-
-Then generate and show the QR code with:
-
-```bash
-lark-cli auth qrcode <verification_url> --output lma_lark_auth_qr.png
+scripts/lma-real process --latest-ended --query "<meeting keyword>" --create-doc --create-tasks --dry-run
 ```
 
 ## Safest Next Prompt
 
-After completing the Feishu authorization, tell Codex:
+After a meeting with readable notes/minutes exists, tell Codex:
 
 ```text
-已授权完成，继续真实 Lark dry-run gate
+已有可读取妙记/会议纪要，继续真实 Lark dry-run gate
 ```
 
-Codex should then finish device-flow polling, run the real dry-run, update `openspec/changes/deliver-nanobot-meeting-mvp/tasks.md`, commit the evidence update, and push the branch.
+Codex should then run the real dry-run, update `openspec/changes/deliver-nanobot-meeting-mvp/tasks.md`, commit the evidence update, and push the branch.

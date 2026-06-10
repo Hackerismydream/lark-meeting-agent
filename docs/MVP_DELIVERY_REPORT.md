@@ -27,6 +27,19 @@ openspec validate deliver-nanobot-meeting-mvp
 
 `scripts/lma-real status` verifies the local DeepSeek key and `lark-cli` auth state without printing secrets.
 
+Verified:
+
+- Real DeepSeek dry-run over the transcript fixture returns `approval_required`.
+- The run produced structured minutes, 1 decision, 2 action items, and 3 dry-run write operations.
+- `lark-cli vc +search --as user` can read visible meetings after user authorization.
+- `lark-cli minutes +search --as user` is authorized and callable.
+
+External data limitation:
+
+- The currently visible VC meetings do not have readable notes/minute transcript content.
+- `minutes +search` returned zero accessible minute records for the checked date ranges.
+- Details are recorded in `docs/BLOCKERS.md`.
+
 Real writes remain intentionally gated by `approve`:
 
 ```bash

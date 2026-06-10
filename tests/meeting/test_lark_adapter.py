@@ -78,3 +78,20 @@ def test_cli_provider_builds_argument_lists_not_shell_strings() -> None:
     assert "--as" in seen[0]
     assert "user" in seen[0]
     assert all(isinstance(part, str) for part in seen[0])
+
+
+def test_cli_provider_builds_minutes_search_argument_list() -> None:
+    seen: list[list[str]] = []
+
+    def runner(argv: list[str], timeout_s: int) -> CommandResult:
+        seen.append(argv)
+        return CommandResult(argv=argv, exit_code=0, stdout=json.dumps({"data": {"items": []}}), stderr="")
+
+    provider = CliLarkProvider(runner=runner)
+    provider.call("minutes.search", {"query": "项目例会", "start": "2026-01-01"}, dry_run=False)
+
+    assert seen
+    assert seen[0][:3] == ["lark-cli", "minutes", "+search"]
+    assert "--query" in seen[0]
+    assert "--start" in seen[0]
+    assert "--as" in seen[0]

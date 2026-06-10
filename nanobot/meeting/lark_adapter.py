@@ -64,6 +64,8 @@ class FakeLarkProvider:
             return self._read_json("vc_search.json")
         if operation == "vc.notes":
             return self._read_json("vc_notes.json")
+        if operation == "minutes.search":
+            return {"items": [], "data": {"items": []}}
         if operation == "docs.fetch":
             return {"content": self._read_json("vc_notes.json").get("transcript", "")}
         if operation == "docs.create":
@@ -127,6 +129,19 @@ class CliLarkProvider:
             self._add_any(argv, payload, "meeting_id", "--meeting-ids")
             self._add_any(argv, payload, "minute_token", "--minute-tokens")
             self._add_any(argv, payload, "calendar_event_id", "--calendar-event-ids")
+            return argv
+        if operation == "minutes.search":
+            argv = ["lark-cli", "minutes", "+search", *common]
+            if query := payload.get("query"):
+                argv.extend(["--query", str(query)])
+            if owner_ids := payload.get("owner_ids"):
+                argv.extend(["--owner-ids", str(owner_ids)])
+            if participant_ids := payload.get("participant_ids"):
+                argv.extend(["--participant-ids", str(participant_ids)])
+            if start := payload.get("start"):
+                argv.extend(["--start", str(start)])
+            if end := payload.get("end"):
+                argv.extend(["--end", str(end)])
             return argv
         if operation == "docs.fetch":
             return [

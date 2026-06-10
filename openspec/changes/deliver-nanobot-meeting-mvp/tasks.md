@@ -30,7 +30,7 @@
 
 - [x] 4.1 Add OpenAI-compatible analyzer defaulting to DeepSeek environment variables.
 - [x] 4.2 Validate LLM output with Pydantic schemas and one repair retry.
-- [x] 4.3 Add `CliLarkProvider` for `auth.status`, `vc.search`, `vc.notes`, `docs.fetch`, `docs.create`, `task.create`, and `im.send`.
+- [x] 4.3 Add `CliLarkProvider` for `auth.status`, `vc.search`, `vc.notes`, `minutes.search`, `docs.fetch`, `docs.create`, `task.create`, and `im.send`.
 - [x] 4.4 Use argv arrays and `shell=False` for CLI invocation.
 - [x] 4.5 Add `scripts/lma-real` to load DeepSeek key from local Keychain and verify `lark-cli` auth.
 - [x] 4.6 Keep secrets out of repository files and docs.
@@ -73,7 +73,7 @@
 
 ## 9. Remaining Manual Gates
 
-- [ ] 9.1 Run a real Lark read + real LLM dry-run against a concrete meeting query. Blocked by missing local `lark-cli` user token for `vc:meeting.search:read`; details are recorded in `docs/BLOCKERS.md`.
+- [ ] 9.1 Run a real Lark read + real LLM dry-run against a concrete meeting query. Lark user scopes are authorized and real Lark search/minutes commands are callable, but the currently visible meetings have no readable notes/minutes transcript data; details are recorded in `docs/BLOCKERS.md`.
 - [ ] 9.2 Review WritePlan for a real run.
 - [ ] 9.3 Execute approved real `docs.create`/`task.create` operations only after human review.
 - [ ] 9.4 Optionally test `im.send` only with a safe explicit `chat_id`.

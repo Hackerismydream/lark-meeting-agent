@@ -167,10 +167,10 @@ class OpenAICompatibleMeetingAnalyzer:
         user_prompt = build_user_prompt(meeting_id, title, segments)
         content = self._complete(client, user_prompt)
         try:
-            return self._parse_minutes(content)
+            return self._parse_minutes(content, segments)
         except AnalyzerValidationError:
             repaired = self._complete(client, build_repair_prompt(content), temperature=0)
-            return self._parse_minutes(repaired)
+            return self._parse_minutes(repaired, segments)
 
     def _complete(self, client: object, prompt: str, temperature: float = 0.1) -> str:
         response = client.chat.completions.create(
@@ -186,12 +186,131 @@ class OpenAICompatibleMeetingAnalyzer:
         return response.choices[0].message.content or ""
 
     @staticmethod
-    def _parse_minutes(content: str) -> MeetingMinutes:
+    def _parse_minutes(content: str, segments: list[TranscriptSegment] | None = None) -> MeetingMinutes:
         try:
             data = json.loads(_extract_json(content))
+            data = _normalize_llm_minutes(data, segments or [])
             return MeetingMinutes.model_validate(data)
         except (json.JSONDecodeError, ValidationError) as exc:
             raise AnalyzerValidationError(f"invalid analyzer output: {exc}") from exc
+
+
+def _normalize_llm_minutes(data: object, segments: list[TranscriptSegment]) -> object:
+    if not isinstance(data, dict):
+        return data
+    normalized = _pick(
+        data,
+        {
+            "meeting_id",
+            "title",
+            "one_sentence_summary",
+            "detailed_summary",
+            "chapters",
+            "decisions",
+            "action_items",
+            "risks",
+            "open_questions",
+        },
+    )
+    if not isinstance(normalized, dict):
+        return data
+    meeting_id = str(normalized.get("meeting_id") or "")
+    segment_index = {segment.segment_id: segment for segment in segments}
+    normalized["chapters"] = [
+        _normalize_chapter(item, meeting_id, segment_index) for item in normalized.get("chapters", [])
+    ]
+    normalized["decisions"] = [
+        _normalize_evidence_container(
+            _pick(item, {"decision_id", "text", "owner", "rationale", "evidence_refs"}), meeting_id, segment_index
+        )
+        for item in normalized.get("decisions", [])
+    ]
+    normalized["action_items"] = [
+        _normalize_evidence_container(_normalize_action_item(item), meeting_id, segment_index)
+        for item in normalized.get("action_items", [])
+    ]
+    normalized["risks"] = [
+        _normalize_evidence_container(
+            _ensure_id(_pick(item, {"risk_id", "text", "evidence_refs"}), "risk_id", f"risk-{index}"),
+            meeting_id,
+            segment_index,
+        )
+        for index, item in enumerate(normalized.get("risks", []), start=1)
+    ]
+    normalized["open_questions"] = [
+        _normalize_evidence_container(
+            _ensure_id(_pick(item, {"question_id", "text", "evidence_refs"}), "question_id", f"q-{index}"),
+            meeting_id,
+            segment_index,
+        )
+        for index, item in enumerate(normalized.get("open_questions", []), start=1)
+    ]
+    return normalized
+
+
+def _normalize_chapter(item: object, meeting_id: str, segment_index: dict[str, TranscriptSegment]) -> object:
+    picked = _pick(item, {"title", "summary", "evidence_refs"})
+    if not isinstance(picked, dict):
+        return picked
+    if not picked.get("summary"):
+        picked["summary"] = str(picked.get("title") or "会议讨论")
+    return _normalize_evidence_container(picked, meeting_id, segment_index)
+
+
+def _normalize_action_item(item: object) -> object:
+    if not isinstance(item, dict):
+        return item
+    normalized = dict(item)
+    if "action_id" not in normalized and "action_item_id" in normalized:
+        normalized["action_id"] = normalized["action_item_id"]
+    if "task" not in normalized and "text" in normalized:
+        normalized["task"] = normalized["text"]
+    return _pick(normalized, {"action_id", "task", "owner", "due_date", "priority", "status", "evidence_refs"})
+
+
+def _pick(item: object, allowed: set[str]) -> object:
+    if not isinstance(item, dict):
+        return item
+    return {key: value for key, value in item.items() if key in allowed}
+
+
+def _normalize_evidence_container(
+    item: object,
+    meeting_id: str,
+    segment_index: dict[str, TranscriptSegment],
+) -> object:
+    if not isinstance(item, dict):
+        return item
+    refs = item.get("evidence_refs")
+    if not isinstance(refs, list):
+        return item
+    item["evidence_refs"] = [_normalize_evidence_ref(ref, meeting_id, segment_index) for ref in refs]
+    return item
+
+
+def _normalize_evidence_ref(
+    ref: object,
+    meeting_id: str,
+    segment_index: dict[str, TranscriptSegment],
+) -> object:
+    if isinstance(ref, dict):
+        return _pick(ref, {"evidence_id", "meeting_id", "segment_id", "speaker_name", "timestamp", "quote"})
+    segment_id = str(ref)
+    segment = segment_index.get(segment_id)
+    return {
+        "evidence_id": f"ev-{segment_id}",
+        "meeting_id": meeting_id or (segment.meeting_id if segment else ""),
+        "segment_id": segment_id,
+        "speaker_name": segment.speaker_name if segment else None,
+        "timestamp": segment.start_time if segment else None,
+        "quote": segment.text if segment else segment_id,
+    }
+
+
+def _ensure_id(item: object, key: str, value: str) -> object:
+    if isinstance(item, dict) and not item.get(key):
+        item[key] = value
+    return item
 
 
 def _extract_json(content: str) -> str:

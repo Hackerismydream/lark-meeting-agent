@@ -72,37 +72,64 @@ class PostMeetingWorkflow:
     def process_latest_ended(self, request: ProcessMeetingInput) -> ProcessMeetingResult:
         adapter = self._adapter(request.provider_mode)
         search = adapter.execute("vc.search", {"query": request.meeting_ref.query}, dry_run=False)
-        meetings = search.get("meetings") or search.get("items") or []
+        meetings = _list_items(search)
         if not meetings:
+            minutes_search = adapter.execute("minutes.search", {"query": request.meeting_ref.query}, dry_run=False)
+            minute_items = _list_items(minutes_search)
+            for minute in minute_items:
+                transcript = _extract_text(minute)
+                token = minute.get("minute_token") or minute.get("token") or minute.get("id")
+                if not transcript and token:
+                    note_result = adapter.execute("vc.notes", {"minute_token": token}, dry_run=False)
+                    transcript = _extract_text(note_result)
+                if transcript:
+                    meeting = Meeting(
+                        meeting_id=str(token or "minute"),
+                        title=str(minute.get("title") or minute.get("topic") or "妙记"),
+                        source="lark-cli",
+                        external_ids={"minute_token": str(token or "")},
+                    )
+                    return self._run(
+                        meeting,
+                        transcript,
+                        request.create_doc,
+                        request.create_tasks,
+                        request.send_message,
+                        request.chat_id,
+                        request.dry_run,
+                    )
             raise MeetingNotFoundError("no ended meeting found")
-        raw = meetings[0]
-        meeting_id = str(raw.get("meeting_id") or raw.get("id") or "")
-        if not meeting_id:
-            raise MeetingNotFoundError("meeting search result has no meeting_id")
-        notes = adapter.execute("vc.notes", {"meeting_id": meeting_id}, dry_run=False)
-        transcript = notes.get("transcript") or notes.get("content") or notes.get("text")
-        if not transcript and (token := notes.get("minute_token") or raw.get("minute_token")):
-            fetched = adapter.execute("docs.fetch", {"doc": token}, dry_run=False)
-            transcript = fetched.get("content") or fetched.get("text")
-        if not transcript:
-            raise TranscriptNotFoundError("meeting has no transcript content")
-        meeting = Meeting(
-            meeting_id=meeting_id,
-            title=str(raw.get("title") or notes.get("title") or "会议"),
-            start_time=raw.get("start_time"),
-            end_time=raw.get("end_time"),
-            source="lark-cli",
-            external_ids={"minute_token": str(raw.get("minute_token") or "")},
-        )
-        return self._run(
-            meeting,
-            str(transcript),
-            request.create_doc,
-            request.create_tasks,
-            request.send_message,
-            request.chat_id,
-            request.dry_run,
-        )
+        last_error: str | None = None
+        for raw in meetings:
+            meeting_id = str(raw.get("meeting_id") or raw.get("id") or "")
+            if not meeting_id:
+                continue
+            notes = adapter.execute("vc.notes", {"meeting_id": meeting_id}, dry_run=False)
+            transcript = _extract_text(notes)
+            if not transcript and (token := _first_value(notes, raw, "minute_token", "token")):
+                fetched = adapter.execute("docs.fetch", {"doc": token}, dry_run=False)
+                transcript = _extract_text(fetched)
+            if not transcript:
+                last_error = _first_note_error(notes) or "meeting has no transcript content"
+                continue
+            meeting = Meeting(
+                meeting_id=meeting_id,
+                title=str(raw.get("title") or raw.get("topic") or raw.get("display_info") or "会议"),
+                start_time=raw.get("start_time"),
+                end_time=raw.get("end_time"),
+                source="lark-cli",
+                external_ids={"minute_token": str(_first_value(notes, raw, "minute_token", "token") or "")},
+            )
+            return self._run(
+                meeting,
+                str(transcript),
+                request.create_doc,
+                request.create_tasks,
+                request.send_message,
+                request.chat_id,
+                request.dry_run,
+            )
+        raise TranscriptNotFoundError(last_error or "meeting has no transcript content")
 
     def approve(self, run_id: str, operation_ids: list[str]):
         run = self.memory.load_run_snapshot(run_id)
@@ -190,6 +217,55 @@ class PostMeetingWorkflow:
         if value == "fake":
             return LarkToolAdapter.fake(self.workspace)
         return LarkToolAdapter.cli(self.workspace)
+
+
+def _list_items(payload: dict) -> list[dict]:
+    for value in (payload.get("meetings"), payload.get("items")):
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+    data = payload.get("data")
+    if isinstance(data, dict):
+        for key in ("items", "meetings", "minutes", "notes"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def _extract_text(payload: dict) -> str | None:
+    for key in ("transcript", "content", "text", "markdown"):
+        value = payload.get(key)
+        if value:
+            return str(value)
+    for item in _list_items(payload):
+        for key in ("transcript", "content", "text", "markdown"):
+            value = item.get(key)
+            if value:
+                return str(value)
+    return None
+
+
+def _first_value(primary: dict, secondary: dict, *keys: str):
+    for source in (primary, secondary):
+        for key in keys:
+            value = source.get(key)
+            if value:
+                return value
+        for item in _list_items(source):
+            for key in keys:
+                value = item.get(key)
+                if value:
+                    return value
+    return None
+
+
+def _first_note_error(payload: dict) -> str | None:
+    for item in _list_items(payload):
+        if error := item.get("error"):
+            return str(error)
+    if error := payload.get("error"):
+        return str(error)
+    return None
 
 
 def process_input(workspace: Path | str, request: ProcessMeetingInput) -> ProcessMeetingResult:
