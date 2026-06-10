@@ -19,6 +19,7 @@ from nanobot.meeting.schemas import (
     PreBriefInput,
     ProcessMeetingInput,
 )
+from nanobot.meeting.transcript_gate import TranscriptGateWorkflow
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
 PROVIDER_MODE_CHOICES = ["fake", "cli", "oapi"]
@@ -57,6 +58,13 @@ def main(argv: list[str] | None = None) -> int:
     prebrief.add_argument("--project")
     prebrief.add_argument("--customer")
     prebrief.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
+
+    transcript_gate = sub.add_parser("transcript-gate")
+    transcript_gate.add_argument("--query")
+    transcript_gate.add_argument("--start")
+    transcript_gate.add_argument("--end")
+    transcript_gate.add_argument("--provider-mode", default="cli", choices=PROVIDER_MODE_CHOICES)
+    transcript_gate.add_argument("--limit", type=int, default=10)
 
     live_start = sub.add_parser("live-start")
     live_start.add_argument("--meeting-id", required=True)
@@ -127,6 +135,16 @@ def main(argv: list[str] | None = None) -> int:
                 project=args.project,
                 customer=args.customer,
             )
+        )
+        print(result.model_dump_json(indent=2))
+        return 0
+    if args.command == "transcript-gate":
+        result = TranscriptGateWorkflow(workspace).run(
+            query=args.query,
+            start=args.start,
+            end=args.end,
+            provider_mode=args.provider_mode,
+            limit=args.limit,
         )
         print(result.model_dump_json(indent=2))
         return 0

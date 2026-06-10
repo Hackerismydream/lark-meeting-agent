@@ -248,6 +248,34 @@ class ToolCallAuditEvent(MeetingBaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
+class TranscriptGateSource(MeetingBaseModel):
+    source_type: str
+    meeting_id: str | None = None
+    minute_token: str | None = None
+    title: str | None = None
+    text_preview: str
+
+
+class TranscriptGateAttempt(MeetingBaseModel):
+    meeting_id: str
+    title: str | None = None
+    reason: str
+
+
+class TranscriptGateReport(MeetingBaseModel):
+    status: str
+    provider_mode: ProviderMode
+    query: str | None = None
+    start: str | None = None
+    end: str | None = None
+    visible_meeting_count: int = 0
+    accessible_minute_count: int = 0
+    readable_source: TranscriptGateSource | None = None
+    checked_meetings: list[TranscriptGateAttempt] = Field(default_factory=list)
+    blocker_message: str | None = None
+    next_process_command: str | None = None
+
+
 class MemoryCard(MeetingBaseModel):
     entity_type: str
     entity_id: str | None = None

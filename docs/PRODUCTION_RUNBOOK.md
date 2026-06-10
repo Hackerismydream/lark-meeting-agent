@@ -24,6 +24,14 @@ The bot should return provider, storage, write-mode, and transcript-gate status 
 
 ## Dry-run Process
 
+Local transcript gate:
+
+```bash
+scripts/lma-real transcript-gate --query "<meeting keyword>"
+```
+
+Only continue to processing when the gate reports `ready`.
+
 Target DM command:
 
 ```text

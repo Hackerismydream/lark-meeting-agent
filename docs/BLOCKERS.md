@@ -50,6 +50,22 @@ ok: true
 count: 0 accessible minute records
 ```
 
+Current helper command:
+
+```bash
+scripts/lma-real transcript-gate --start 2026-05-01 --end 2026-06-10 --limit 10
+```
+
+Current helper result:
+
+```text
+status: blocked
+visible_meeting_count: 7
+accessible_minute_count: 0
+checked_meetings: 7
+reason: all 1 queries failed
+```
+
 ## Completed Fixes
 
 - Added `scripts/lma-real` to load the DeepSeek key from macOS Keychain and verify `lark-cli` auth.
@@ -70,6 +86,7 @@ To complete the real Lark transcript gate, provide or create at least one Feishu
 Then run:
 
 ```bash
+scripts/lma-real transcript-gate --query "<meeting keyword>"
 scripts/lma-real process --latest-ended --query "<meeting keyword>" --create-doc --create-tasks --dry-run
 ```
 

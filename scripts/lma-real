@@ -51,6 +51,12 @@ case "$subcommand" in
     shift || true
     exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
     ;;
+  transcript-gate)
+    shift || true
+    exec uv run python -m nanobot.meeting.cli transcript-gate \
+      --provider-mode "$LMA_PROVIDER_MODE" \
+      "$@"
+    ;;
   live-start|live-ingest|live-qa|evaluate)
     shift || true
     exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
