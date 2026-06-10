@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "event_id": "evt-1",
+      "event_type": "transcript_received",
+      "speaker": {
+        "name": "Alice"
+      },
+      "timestamp": "00:00:01",
+      "transcript": {
+        "text": "Alice 决定继续灰度。"
+      },
+      "segment_id": "seg-1"
+    }
+  ]
+}

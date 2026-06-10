@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "event_id": "evt-9",
+      "event_type": "chat_received",
+      "sender": {
+        "name": "Bob"
+      },
+      "message": {
+        "text": "第二页"
+      },
+      "segment_id": "seg-9"
+    }
+  ],
+  "has_more": false
+}

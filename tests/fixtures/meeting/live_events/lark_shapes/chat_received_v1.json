@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "event_id": "evt-2",
+      "event_type": "chat_received",
+      "sender": {
+        "name": "Bob"
+      },
+      "timestamp": "00:00:02",
+      "message": {
+        "text": "Bob 负责补充清单。"
+      },
+      "segment_id": "seg-2"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "scenario_id": "requirement_review",
+  "title": "导出需求评审",
+  "meeting_type": "requirement_review",
+  "project": "Export",
+  "customer": null,
+  "participants": [
+    {
+      "participant_id": "ou_alice",
+      "display_name": "Alice",
+      "role": "owner",
+      "org": "internal"
+    },
+    {
+      "participant_id": "ou_bob",
+      "display_name": "Bob",
+      "role": "engineer",
+      "org": "internal"
+    }
+  ],
+  "agenda": [
+    {
+      "title": "回顾背景",
+      "owner": "Alice"
+    },
+    {
+      "title": "确认结论和待办",
+      "owner": "Bob"
+    }
+  ]
+}

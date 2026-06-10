@@ -1,0 +1,10 @@
+{
+  "project": "Renewal",
+  "customer": "Acme",
+  "facts": [
+    "客户预算审批卡在采购流程。"
+  ],
+  "open_actions": [
+    "上次待办仍需确认 owner 和截止时间。"
+  ]
+}

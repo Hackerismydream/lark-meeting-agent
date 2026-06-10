@@ -1,0 +1,31 @@
+{
+  "scenario_id": "long_project_retrospective",
+  "title": "Alpha 长周期复盘",
+  "meeting_type": "long_project_retrospective",
+  "project": "Alpha",
+  "customer": null,
+  "participants": [
+    {
+      "participant_id": "ou_alice",
+      "display_name": "Alice",
+      "role": "owner",
+      "org": "internal"
+    },
+    {
+      "participant_id": "ou_bob",
+      "display_name": "Bob",
+      "role": "engineer",
+      "org": "internal"
+    }
+  ],
+  "agenda": [
+    {
+      "title": "回顾背景",
+      "owner": "Alice"
+    },
+    {
+      "title": "确认结论和待办",
+      "owner": "Bob"
+    }
+  ]
+}

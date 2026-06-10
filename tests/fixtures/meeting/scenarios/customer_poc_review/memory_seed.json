@@ -1,0 +1,10 @@
+{
+  "project": "Alpha",
+  "customer": "Acme",
+  "facts": [
+    "客户要求安全审计作为验收标准。"
+  ],
+  "open_actions": [
+    "上次待办仍需确认 owner 和截止时间。"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "events": [
+    {
+      "event_id": "evt-7",
+      "event_type": "transcript_received",
+      "speaker": {
+        "name": "Alice"
+      },
+      "transcript": {
+        "text": "重复事件"
+      },
+      "segment_id": "seg-7"
+    },
+    {
+      "event_id": "evt-7",
+      "event_type": "transcript_received",
+      "speaker": {
+        "name": "Alice"
+      },
+      "transcript": {
+        "text": "重复事件"
+      },
+      "segment_id": "seg-7"
+    }
+  ]
+}

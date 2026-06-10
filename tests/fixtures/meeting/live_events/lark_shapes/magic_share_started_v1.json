@@ -1,0 +1,13 @@
+{
+  "events": [
+    {
+      "event_id": "evt-5",
+      "event_type": "magic_share_started",
+      "speaker": {
+        "name": "Alice"
+      },
+      "timestamp": "00:00:05",
+      "text": "开始共享方案文档"
+    }
+  ]
+}

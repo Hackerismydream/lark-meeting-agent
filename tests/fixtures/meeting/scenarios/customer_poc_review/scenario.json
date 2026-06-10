@@ -1,0 +1,38 @@
+{
+  "scenario_id": "customer_poc_review",
+  "title": "客户 POC 复盘",
+  "meeting_type": "customer_poc_review",
+  "project": "Alpha",
+  "customer": "Acme",
+  "participants": [
+    {
+      "participant_id": "ou_alice",
+      "display_name": "Alice",
+      "role": "owner",
+      "org": "internal"
+    },
+    {
+      "participant_id": "ou_bob",
+      "display_name": "Bob",
+      "role": "engineer",
+      "org": "internal"
+    },
+    {
+      "participant_id": "ou_client",
+      "display_name": "Carol",
+      "role": "customer",
+      "org": "Acme",
+      "is_external": true
+    }
+  ],
+  "agenda": [
+    {
+      "title": "回顾背景",
+      "owner": "Alice"
+    },
+    {
+      "title": "确认结论和待办",
+      "owner": "Bob"
+    }
+  ]
+}

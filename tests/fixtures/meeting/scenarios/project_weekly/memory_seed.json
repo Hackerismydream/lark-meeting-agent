@@ -1,0 +1,10 @@
+{
+  "project": "Alpha",
+  "customer": null,
+  "facts": [
+    "上周灰度上线剩余风险清单未关闭。"
+  ],
+  "open_actions": [
+    "上次待办仍需确认 owner 和截止时间。"
+  ]
+}

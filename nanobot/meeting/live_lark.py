@@ -179,7 +179,7 @@ class LiveLarkMeetingWorkflow:
 
 
 def _event_kind(event_type: str) -> LiveEventKind:
-    if event_type == "transcript_received":
+    if event_type in {"transcript_received", "chat_received"}:
         return LiveEventKind.TRANSCRIPT_DELTA
     if event_type == "participant_joined":
         return LiveEventKind.PARTICIPANT_JOIN

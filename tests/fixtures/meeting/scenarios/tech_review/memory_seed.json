@@ -1,0 +1,10 @@
+{
+  "project": "Cache",
+  "customer": null,
+  "facts": [
+    "历史事故来自缓存一致性问题。"
+  ],
+  "open_actions": [
+    "上次待办仍需确认 owner 和截止时间。"
+  ]
+}

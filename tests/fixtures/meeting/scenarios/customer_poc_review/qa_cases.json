@@ -1,0 +1,9 @@
+[
+  {
+    "question": "目前有哪些结论和待办？",
+    "expected_segment_ids": [
+      "seg-0002",
+      "seg-0003"
+    ]
+  }
+]

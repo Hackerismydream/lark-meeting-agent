@@ -1,0 +1,10 @@
+{
+  "project": "Payment",
+  "customer": null,
+  "facts": [
+    "昨晚支付回调超时导致订单延迟。"
+  ],
+  "open_actions": [
+    "上次待办仍需确认 owner 和截止时间。"
+  ]
+}

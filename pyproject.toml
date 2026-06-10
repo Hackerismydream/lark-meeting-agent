@@ -104,6 +104,8 @@ dev = [
     "aiohttp>=3.9.0,<4.0.0",
     "pytest-cov>=6.0.0,<7.0.0",
     "ruff>=0.1.0",
+    "hypothesis>=6.100.0,<7.0.0",
+    "freezegun>=1.5.0,<2.0.0",
     "pymupdf>=1.25.0",
 ]
 

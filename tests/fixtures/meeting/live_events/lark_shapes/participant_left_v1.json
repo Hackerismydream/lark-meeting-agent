@@ -1,0 +1,12 @@
+{
+  "events": [
+    {
+      "event_id": "evt-4",
+      "event_type": "participant_left",
+      "participant": {
+        "name": "Bob"
+      },
+      "timestamp": "00:00:04"
+    }
+  ]
+}

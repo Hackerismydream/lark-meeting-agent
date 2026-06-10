@@ -1,0 +1,10 @@
+{
+  "project": "Alpha",
+  "customer": null,
+  "facts": [
+    "过去三个月多次因为范围变更延期。"
+  ],
+  "open_actions": [
+    "上次待办仍需确认 owner 和截止时间。"
+  ]
+}
