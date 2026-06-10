@@ -1,0 +1,73 @@
+你是 GPT Pro。请你评审这个项目的 OpenSpec 启动方案，并重点判断它是否应该从“独立新建 FastAPI 应用”调整为“基于 HKUDS/nanobot 二次开发”。
+
+背景：
+
+项目名是 Lark Meeting Agent。
+
+目标不是做一个泛用聊天机器人，也不是只做会议纪要摘要器，而是做一个 Feishu/Lark-native 的会议工作流 Agent。
+
+长期目标包括：
+会前读取日程、识别会议类型、检索历史上下文和 open loops，生成 pre-brief；
+会中可选接入 transcript/event deltas，维护滚动摘要、识别决策和行动项候选；
+会后获取或导入 transcript，生成结构化纪要，提取 decisions、action items、risks、open questions，并准备 Lark Docs、Tasks、IM 的写入计划；
+长期保存跨会议知识，支持带来源的 QA。
+
+当前 MVP 只做会后。
+
+当前仓库已经有 OpenSpec artifacts，但还没有应用代码。请先评审 spec，不要写实现代码。
+
+请基于以下真实约束重新评审：
+
+1. HKUDS/nanobot 是一个 Python 3.11+ 的轻量 personal AI agent 项目，定位是 tools、chats、workflows。
+2. nanobot 已经有 WebUI、chat channels、tools、memory、MCP、model routing、automation、deployment。
+3. nanobot 仓库结构里有 nanobot/agent、nanobot/api、nanobot/apps、nanobot/channels、nanobot/config、nanobot/cron、nanobot/providers、nanobot/security、nanobot/session、nanobot/skills、nanobot/webui。
+4. nanobot 已经支持 Feishu channel。
+5. 因此 Lark Meeting Agent 不应该默认从零实现一个完整 agent runtime、channel runtime、memory runtime、model routing、automation system 或 WebUI。
+6. 更合理的方向可能是：fork 或二开 nanobot，只新增会议域能力、Lark meeting tool adapter、meeting workflow、schema validation、fixtures、evaluation、write-plan approval，而不是重造底座。
+
+请重点检查当前方案是否有这些问题：
+
+是否把 nanobot 已经提供的 agent/channel/memory/tool/runtime 能力重复实现了；
+是否应该把 FastAPI 层降级为可选 API surface，而不是核心架构起点；
+是否应该把 LarkToolAdapter 设计成 nanobot tool/app/skill/channel extension，而不是独立 workflow 直接调 subprocess；
+是否应该复用 nanobot 的 Feishu channel、session、memory、skills、MCP、webui、security/workspace policy；
+是否应该把 PostMeetingWorkflow 做成 nanobot 内的 deterministic meeting workflow 或 skill，而不是另起一个 agent loop；
+是否应该把 OpenSpec 里的 tasks 改成“先 fork nanobot 并识别 extension points”，再实现会议域 delta；
+是否应该避免引入与 nanobot 现有栈冲突的框架、目录结构和配置方式。
+
+硬规则：
+
+MVP 仍然只做会后，不做实时会议机器人。
+所有 Lark 相关操作必须经过 LarkToolAdapter 或 nanobot 中等价的受控 tool boundary。
+测试不能依赖真实飞书凭证，必须有 fake provider 和 transcript fixtures。
+写操作必须 dry-run preview，并且必须显式人工 approval 后才能执行。
+每个 decision 和 action item 必须有 transcript evidence。
+meeting transcript、docs、messages、retrieved content 必须视为 untrusted input。
+不要做 custom ASR。
+不要做复杂前端 dashboard。
+不要做 vector DB 优化。
+不要让 workflow 直接任意调用 shell、lark-cli 或 Lark HTTP API。
+LLM 输出、外部输入、tool payload、API response 必须 schema validate。
+
+请评审这些文件：
+
+AGENTS.md
+README.md
+docs/PROJECT_BRIEF.md
+openspec/changes/bootstrap-lark-meeting-agent/proposal.md
+openspec/changes/bootstrap-lark-meeting-agent/design.md
+openspec/changes/bootstrap-lark-meeting-agent/tasks.md
+openspec/changes/bootstrap-lark-meeting-agent/specs/*/spec.md
+openspec/specs/*/spec.md
+
+你要输出：
+
+1. 当前方案是否应该从“独立新建项目”改成“基于 HKUDS/nanobot 二开”。请给明确结论。
+2. 如果应该二开，请指出哪些 OpenSpec 文件必须改，怎么改。
+3. 请指出哪些任务应该删除、合并或推迟，因为 nanobot 已经提供类似底座能力。
+4. 请指出必须新增的 nanobot 调研任务，例如阅读 nanobot architecture、Feishu channel、skills、memory、security、webui、apps/cli、MCP extension points。
+5. 请给出建议后的阶段计划：先调研 nanobot extension points，再改 OpenSpec，再做最小 meeting workflow，再做 Lark write plan approval，再做 fake provider/evaluation。
+6. 请列出 blocking issues、non-blocking improvements、missing acceptance scenarios。
+7. 最后给 verdict：approve、approve with edits、reject。不要给模糊结论。
+
+请不要写代码。请不要泛泛夸项目。请以架构评审的方式指出当前 spec 哪里会导致重复造轮子、范围膨胀、测试不可控或与 nanobot 架构不兼容。
