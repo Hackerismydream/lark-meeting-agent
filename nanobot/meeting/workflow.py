@@ -209,6 +209,27 @@ class PostMeetingWorkflow:
             write_plan=run.write_plan,
         )
 
+    def reject(self, run_id: str) -> ProcessMeetingResult:
+        run = self.memory.load_run_snapshot(run_id)
+        if not run.write_plan:
+            raise TranscriptNotFoundError("run has no write plan")
+        rejected_at = datetime.now(timezone.utc).isoformat()
+        for operation in run.write_plan.operations:
+            if operation.execution_status == ExecutionStatus.COMPLETED:
+                continue
+            operation.approval_status = ApprovalStatus.REJECTED
+            operation.execution_status = ExecutionStatus.SKIPPED
+        run.status = RunStatus.REJECTED
+        run.updated_at = rejected_at
+        self.memory.save_run_snapshot(run)
+        return ProcessMeetingResult(
+            run_id=run.run_id,
+            status=run.status,
+            meeting=run.meeting,
+            minutes=run.minutes,
+            write_plan=run.write_plan,
+        )
+
     def _run(
         self,
         meeting: Meeting,

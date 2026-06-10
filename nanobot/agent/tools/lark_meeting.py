@@ -10,6 +10,7 @@ from nanobot.meeting.evals import LifecycleEvaluator
 from nanobot.meeting.live import LiveMeetingWorkflow
 from nanobot.meeting.memory import MeetingMemoryStore
 from nanobot.meeting.prebrief import PreBriefWorkflow
+from nanobot.meeting.production import MeetingAgentAccessPolicy, MeetingBotContext, ProductionMeetingBot
 from nanobot.meeting.schemas import (
     LiveEventKind,
     LiveMeetingEvent,
@@ -41,8 +42,27 @@ class LarkMeetingTool(Tool):
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["prebrief", "live_ingest", "live_qa", "process", "approve", "qa", "status", "evaluate"],
+                    "enum": [
+                        "bot_message",
+                        "prebrief",
+                        "live_ingest",
+                        "live_qa",
+                        "process",
+                        "approve",
+                        "qa",
+                        "status",
+                        "evaluate",
+                    ],
                 },
+                "message_text": {"type": ["string", "null"]},
+                "sender_id": {"type": ["string", "null"]},
+                "sender_open_id": {"type": ["string", "null"]},
+                "bot_chat_type": {"type": "string", "enum": ["dm", "group"]},
+                "mentioned": {"type": "boolean"},
+                "allowed_users": {"type": "array", "items": {"type": "string"}},
+                "allowed_chat_ids": {"type": "array", "items": {"type": "string"}},
+                "admin_users": {"type": "array", "items": {"type": "string"}},
+                "write_approvers": {"type": "array", "items": {"type": "string"}},
                 "meeting_ref_type": {
                     "type": "string",
                     "enum": ["latest_ended", "meeting_id", "minute_token", "transcript_file"],
@@ -92,6 +112,34 @@ class LarkMeetingTool(Tool):
         provider_mode = kwargs.get("provider_mode") or "fake"
         analyzer_mode = kwargs.get("analyzer_mode") or "fake"
         workflow = PostMeetingWorkflow(self.workspace, provider_mode, analyzer_mode)
+        if action == "bot_message":
+            message_text = kwargs.get("message_text") or kwargs.get("query")
+            sender_id = kwargs.get("sender_id") or kwargs.get("sender_open_id")
+            if not message_text:
+                return "Error: message_text is required for bot_message"
+            if not sender_id:
+                return "Error: sender_id is required for bot_message"
+            policy = MeetingAgentAccessPolicy(
+                allowed_users=set(kwargs.get("allowed_users") or []),
+                allowed_chat_ids=set(kwargs.get("allowed_chat_ids") or []),
+                admin_users=set(kwargs.get("admin_users") or []),
+                write_approvers=set(kwargs.get("write_approvers") or []),
+            )
+            reply = ProductionMeetingBot(
+                workspace=self.workspace,
+                policy=policy,
+                provider_mode=provider_mode,
+                analyzer_mode=analyzer_mode,
+            ).handle_message(
+                MeetingBotContext(
+                    sender_id=str(sender_id),
+                    chat_id=kwargs.get("chat_id"),
+                    chat_type=kwargs.get("bot_chat_type") or "dm",
+                    mentioned=bool(kwargs.get("mentioned", False)),
+                ),
+                str(message_text),
+            )
+            return reply.model_dump_json(indent=2)
         if action == "prebrief":
             ref = MeetingRef(
                 type=MeetingRefType(kwargs.get("meeting_ref_type") or "latest_ended"),

@@ -16,12 +16,12 @@
 
 ## 3. Later Implementation Scope
 
-- [ ] 3.1 Implement deterministic `/meeting` command parser.
-- [ ] 3.2 Implement access policy and approver policy.
-- [ ] 3.3 Implement approval prompt/reject protocol.
-- [ ] 3.4 Add repository interfaces and SQLite backend.
-- [ ] 3.5 Add production config validation.
-- [ ] 3.6 Add fake tests and opt-in real smoke tests.
+- [x] 3.1 Implement deterministic `/meeting` command parser.
+- [x] 3.2 Implement access policy and approver policy.
+- [x] 3.3 Implement approval prompt/reject protocol.
+- [x] 3.4 Add repository interfaces and SQLite backend.
+- [x] 3.5 Add production config validation.
+- [x] 3.6 Add fake tests and opt-in real smoke tests.
 
 ## 4. Explicit Non-goals
 
