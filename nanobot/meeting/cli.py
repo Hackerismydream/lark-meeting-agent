@@ -21,6 +21,8 @@ from nanobot.meeting.schemas import (
 )
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
+PROVIDER_MODE_CHOICES = ["fake", "cli", "oapi"]
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m nanobot.meeting.cli")
@@ -31,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     process.add_argument("--latest-ended", action="store_true")
     process.add_argument("--query")
     process.add_argument("--transcript-file")
-    process.add_argument("--provider-mode", default="fake", choices=["fake", "cli"])
+    process.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
     process.add_argument("--analyzer-mode", default="fake", choices=["fake", "llm"])
     process.add_argument("--create-doc", action="store_true")
     process.add_argument("--create-tasks", action="store_true")
@@ -42,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     approve = sub.add_parser("approve")
     approve.add_argument("--run-id", required=True)
     approve.add_argument("--operation-ids", required=True)
-    approve.add_argument("--provider-mode", choices=["fake", "cli"])
+    approve.add_argument("--provider-mode", choices=PROVIDER_MODE_CHOICES)
     approve.add_argument("--override-provider-mode", action="store_true")
 
     qa = sub.add_parser("qa")
@@ -54,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     prebrief.add_argument("--meeting-type", default="general", choices=[item.value for item in MeetingType])
     prebrief.add_argument("--project")
     prebrief.add_argument("--customer")
-    prebrief.add_argument("--provider-mode", default="fake", choices=["fake", "cli"])
+    prebrief.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
 
     live_start = sub.add_parser("live-start")
     live_start.add_argument("--meeting-id", required=True)

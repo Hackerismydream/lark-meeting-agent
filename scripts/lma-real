@@ -18,6 +18,7 @@ fi
 export LMA_LLM_BASE_URL="${LMA_LLM_BASE_URL:-https://api.deepseek.com}"
 export LMA_LLM_MODEL="${LMA_LLM_MODEL:-deepseek-v4-pro}"
 export LARK_CLI_NO_PROXY="${LARK_CLI_NO_PROXY:-1}"
+export LMA_PROVIDER_MODE="${LMA_PROVIDER_MODE:-cli}"
 
 command -v lark-cli >/dev/null || {
   echo "lark-cli is not installed or not on PATH." >&2
@@ -36,14 +37,14 @@ case "$subcommand" in
   process)
     shift || true
     exec uv run python -m nanobot.meeting.cli process \
-      --provider-mode cli \
+      --provider-mode "$LMA_PROVIDER_MODE" \
       --analyzer-mode llm \
       "$@"
     ;;
   prebrief)
     shift || true
     exec uv run python -m nanobot.meeting.cli prebrief \
-      --provider-mode cli \
+      --provider-mode "$LMA_PROVIDER_MODE" \
       "$@"
     ;;
   approve|qa)
