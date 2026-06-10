@@ -29,6 +29,9 @@ Real Lark read/write paths exist through `lark-cli`, but readable meeting minute
 
 ```text
 openspec/changes/deliver-lifecycle-meeting-agent
+openspec/changes/harden-lifecycle-agent-evidence-and-real-gates
+openspec/changes/production-feishu-bot
+openspec/changes/macos-companion-app
 ```
 
 ## OpenSpec Workflow
@@ -96,6 +99,15 @@ openspec validate deliver-lifecycle-meeting-agent
 ```
 
 Real demo instructions are in `docs/MVP_REAL_DEMO.md`.
+
+Production planning docs:
+
+- `docs/PRODUCTION_FEISHU_BOT_DEPLOYMENT.md`
+- `docs/PRODUCTION_SECURITY_CHECKLIST.md`
+- `docs/PRODUCTION_RUNBOOK.md`
+- `docs/REAL_TRANSCRIPT_GATE.md`
+- `docs/OAPI_PROVIDER_PLAN.md`
+- `docs/MACOS_APP_ROADMAP.md`
 
 Local real-mode helper:
 

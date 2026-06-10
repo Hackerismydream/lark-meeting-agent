@@ -288,6 +288,28 @@ nanobot AgentLoop may route user messages into the meeting entrypoint, but the w
 - optional LLM extraction benchmark contract,
 - documentation truthfulness.
 
+### Planned: Production Feishu Bot
+
+- nanobot Feishu channel deployment path,
+- DM/group `/meeting` command UX,
+- user/group access policy,
+- approver policy,
+- bot-friendly approval and rejection protocol,
+- repository abstraction and SQLite production MVP storage,
+- production deployment docs and safety checklist,
+- real transcript gate workflow,
+- OpenAPI provider plan.
+
+### Planned: macOS Companion App
+
+- menu bar meeting status,
+- pre-brief notifications,
+- WritePlan approval inbox,
+- run trace viewer,
+- cross-meeting search,
+- transcript/audio upload,
+- no direct Lark writes from the app.
+
 ### Future Enhancements
 
 - real readable Lark minutes/transcript gate once the authorized account has accessible data,
