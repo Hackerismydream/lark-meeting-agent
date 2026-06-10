@@ -73,7 +73,7 @@
 
 ## 9. Remaining Manual Gates
 
-- [ ] 9.1 Run a real Lark read + real LLM dry-run against a concrete meeting query. Blocked until user authorizes `vc:meeting.search:read` for lark-cli user identity.
+- [ ] 9.1 Run a real Lark read + real LLM dry-run against a concrete meeting query. Blocked by missing local `lark-cli` user token for `vc:meeting.search:read`; details are recorded in `docs/BLOCKERS.md`.
 - [ ] 9.2 Review WritePlan for a real run.
 - [ ] 9.3 Execute approved real `docs.create`/`task.create` operations only after human review.
 - [ ] 9.4 Optionally test `im.send` only with a safe explicit `chat_id`.
