@@ -1,5 +1,7 @@
 # MVP Delivery Report
 
+This report records the completed post-meeting MVP. The current lifecycle implementation is documented in `docs/LIFECYCLE_DELIVERY_REPORT.md`.
+
 ## Delivered
 
 - Imported HKUDS/nanobot v0.2.1 source into the repo while preserving Lark Meeting Agent docs/OpenSpec.

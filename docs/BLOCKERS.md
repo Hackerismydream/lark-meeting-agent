@@ -4,7 +4,7 @@
 
 Status: blocked by missing real meeting transcript/minutes data in the currently authorized Feishu/Lark account.
 
-The repository implementation, OpenSpec delivery change, fake CI gates, local real-mode helper, DeepSeek real LLM dry-run, and `lark-cli` user authorization are in place.
+The repository implementation, OpenSpec delivery changes, fake CI gates, local real-mode helper, DeepSeek real LLM dry-run, lifecycle fake benchmark, and `lark-cli` user authorization are in place.
 
 The remaining external-data limitation is that the currently authorized Feishu/Lark user has meetings visible to `vc +search`, but those meetings do not have readable notes/minute transcript content. `minutes +search` is also authorized and returns zero accessible minute records for the checked date ranges.
 
@@ -68,6 +68,12 @@ Then run:
 
 ```bash
 scripts/lma-real process --latest-ended --query "<meeting keyword>" --create-doc --create-tasks --dry-run
+```
+
+Lifecycle pre-brief can be smoke-tested with real `lark-cli` calendar/doc/task reads independently:
+
+```bash
+scripts/lma-real prebrief --query "<meeting keyword>" --meeting-type project_sync --project "<project>"
 ```
 
 ## Safest Next Prompt

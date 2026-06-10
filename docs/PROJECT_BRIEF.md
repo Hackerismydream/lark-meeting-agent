@@ -86,7 +86,28 @@ Long-term
   -> cross-meeting QA with source evidence
 ```
 
-## 7. MVP
+## 7. Current Lifecycle Implementation
+
+The current repository implements the lifecycle shape around the original post-meeting MVP.
+
+Implemented now:
+
+- pre-meeting brief generation from agenda, related docs/tasks, historical meeting memory, and entity memory,
+- live transcript/event ingestion with rolling summary, decision/action/risk/question candidates, and source-grounded live QA,
+- post-meeting transcript processing, structured minutes, evidence-linked decisions/action items, risks, open questions, write plans, and approval-gated writes,
+- layered JSONL memory for meetings, transcript segments, minutes, decisions, action items, risks, open questions, entity memories, traces, and retrieval metadata,
+- cross-meeting retrieval and QA with structured/keyword search plus an optional semantic retrieval interface,
+- 31-case lifecycle benchmark with action/decision precision and recall, evidence coverage, schema success, safety, and QA source metrics.
+
+Not implemented in this change:
+
+- custom ASR,
+- automatic bot join,
+- unapproved realtime VC control,
+- production OAuth onboarding,
+- mandatory PostgreSQL/vector database service.
+
+## 8. MVP
 
 The MVP only implements the post-meeting workflow.
 
@@ -107,7 +128,7 @@ MVP output:
 - persisted meeting knowledge,
 - simple cross-meeting QA with sources.
 
-## 8. MVP Non-goals
+## 9. MVP Non-goals
 
 The MVP does not include:
 
@@ -123,7 +144,7 @@ The MVP does not include:
 - independent generic memory runtime,
 - independent WebUI or model-routing runtime.
 
-## 9. Nanobot Pivot
+## 10. Nanobot Pivot
 
 The project should be built from HKUDS/nanobot v0.2.1 rather than a standalone FastAPI app.
 
@@ -151,7 +172,7 @@ Lark Meeting Agent adds:
 - meeting structured memory,
 - fixture-based evaluation.
 
-## 10. Technical Principles
+## 11. Technical Principles
 
 1. Reuse nanobot infrastructure where it already exists.
 2. Deterministic workflow first, LLM second.
@@ -163,12 +184,20 @@ Lark Meeting Agent adds:
 8. Meeting content is untrusted input.
 9. System behavior is specified through OpenSpec before code implementation.
 
-## 11. Architecture Overview
+## 12. Architecture Overview
 
 ```text
 Feishu / WebUI / CLI / other nanobot channels
   -> nanobot MessageBus / AgentLoop / CommandRouter
-  -> Lark Meeting entrypoint
+      -> Lark Meeting entrypoint
+      -> deterministic PreBriefWorkflow
+          -> Read agenda/docs/tasks through LarkToolAdapter
+          -> Retrieve history and open actions
+          -> Generate sourced pre-brief
+      -> deterministic LiveMeetingWorkflow
+          -> Ingest transcript/event deltas
+          -> Maintain rolling state
+          -> Answer live QA with sources
       -> deterministic PostMeetingWorkflow
           -> ResolveMeeting
           -> FetchTranscript
@@ -185,7 +214,7 @@ Feishu / WebUI / CLI / other nanobot channels
   -> nanobot session/memory/provider/WebUI/deployment infrastructure
 ```
 
-## 12. Core Workflow: PostMeetingWorkflow
+## 13. Core Workflow: PostMeetingWorkflow
 
 ```text
 ResolveMeeting
@@ -201,7 +230,7 @@ ResolveMeeting
 
 nanobot AgentLoop may route user messages into the meeting entrypoint, but the workflow itself remains deterministic and testable.
 
-## 13. Main Data Objects
+## 14. Main Data Objects
 
 - Meeting
 - TranscriptSegment
@@ -216,8 +245,15 @@ nanobot AgentLoop may route user messages into the meeting entrypoint, but the w
 - MeetingKnowledgeRecord
 - MemoryCard
 - Run
+- PreBrief
+- LiveMeetingState
+- LiveMeetingEvent
+- EntityMemory
+- RetrievalResult
+- RunTrace
+- EvaluationReport
 
-## 14. Development Roadmap
+## 15. Development Roadmap
 
 ### Phase 1: Documentation and OpenSpec Pivot
 

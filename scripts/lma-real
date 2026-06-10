@@ -40,7 +40,17 @@ case "$subcommand" in
       --analyzer-mode llm \
       "$@"
     ;;
+  prebrief)
+    shift || true
+    exec uv run python -m nanobot.meeting.cli prebrief \
+      --provider-mode cli \
+      "$@"
+    ;;
   approve|qa)
+    shift || true
+    exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
+    ;;
+  live-start|live-ingest|live-qa|evaluate)
     shift || true
     exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
     ;;

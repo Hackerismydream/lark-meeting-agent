@@ -62,10 +62,10 @@
 
 ## 10. Real Smoke and Documentation
 
-- [ ] 10.1 Extend `scripts/lma-real` or add lifecycle smoke commands for status, prebrief, process, QA, and evaluation.
-- [ ] 10.2 Keep real DeepSeek and lark-cli credentials out of repository files, tests, fixtures, logs, and docs.
-- [ ] 10.3 Update README, project brief, blockers, delivery report, and resume evidence notes to reflect lifecycle implementation status.
-- [ ] 10.4 Document account-dependent real Lark minutes limitations separately from code-path validation.
+- [x] 10.1 Extend `scripts/lma-real` or add lifecycle smoke commands for status, prebrief, process, QA, and evaluation.
+- [x] 10.2 Keep real DeepSeek and lark-cli credentials out of repository files, tests, fixtures, logs, and docs.
+- [x] 10.3 Update README, project brief, blockers, delivery report, and resume evidence notes to reflect lifecycle implementation status.
+- [x] 10.4 Document account-dependent real Lark minutes limitations separately from code-path validation.
 
 ## 11. Validation and Commits
 
@@ -74,5 +74,5 @@
 - [x] 11.3 Run `ruff check nanobot tests`.
 - [x] 11.4 Run `openspec validate deliver-lifecycle-meeting-agent`.
 - [x] 11.5 Run fake lifecycle CLI/tool smoke tests.
-- [ ] 11.6 Run optional real smoke where local Lark/DeepSeek access allows and document blockers.
-- [ ] 11.7 Commit implementation in reviewable slices matching the task groups.
+- [x] 11.6 Run optional real smoke where local Lark/DeepSeek access allows and document blockers.
+- [x] 11.7 Commit implementation in reviewable slices matching the task groups.
