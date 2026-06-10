@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ProviderMode(StrEnum):
     FAKE = "fake"
     CLI = "cli"
+    OAPI = "oapi"
 
 
 class AnalyzerMode(StrEnum):

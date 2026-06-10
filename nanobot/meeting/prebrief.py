@@ -106,6 +106,8 @@ class PreBriefWorkflow:
     def _adapter(self, mode: str | ProviderMode) -> LarkToolAdapter:
         if ProviderMode(mode) == ProviderMode.FAKE:
             return LarkToolAdapter.fake(self.workspace)
+        if ProviderMode(mode) == ProviderMode.OAPI:
+            return LarkToolAdapter.oapi(self.workspace)
         return LarkToolAdapter.cli(self.workspace)
 
 

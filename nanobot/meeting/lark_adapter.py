@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,6 +28,8 @@ from nanobot.meeting.schemas import (
     ToolCallAuditEvent,
 )
 
+WRITE_OP_NAMES = {"docs.create", "task.create", "im.send"}
+
 
 @dataclass
 class CommandResult:
@@ -31,6 +37,14 @@ class CommandResult:
     exit_code: int
     stdout: str
     stderr: str
+
+
+@dataclass
+class OapiRequest:
+    method: str
+    path: str
+    params: dict[str, Any]
+    body: dict[str, Any]
 
 
 class SubprocessRunner:
@@ -269,6 +283,178 @@ class CliLarkProvider:
             argv.extend([flag, str(value)])
 
 
+class OapiHttpRunner:
+    """Small HTTP runner for Lark OpenAPI requests."""
+
+    def __call__(
+        self,
+        *,
+        base_url: str,
+        request: OapiRequest,
+        token: str,
+        timeout_s: int,
+    ) -> dict[str, Any]:
+        query = urllib.parse.urlencode({key: value for key, value in request.params.items() if value is not None})
+        url = f"{base_url.rstrip('/')}{request.path}"
+        if query:
+            url = f"{url}?{query}"
+        data = json.dumps(request.body, ensure_ascii=False).encode("utf-8") if request.body else None
+        http_request = urllib.request.Request(
+            url,
+            data=data,
+            method=request.method,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json; charset=utf-8",
+            },
+        )
+        try:
+            with urllib.request.urlopen(http_request, timeout=timeout_s) as response:
+                payload = response.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise ToolExecutionError(f"Lark OpenAPI HTTP {exc.code}: {body}") from exc
+        except urllib.error.URLError as exc:
+            raise ToolExecutionError(f"Lark OpenAPI request failed: {exc.reason}") from exc
+        try:
+            parsed = json.loads(payload or "{}")
+        except json.JSONDecodeError as exc:
+            raise ToolExecutionError("Lark OpenAPI returned malformed JSON") from exc
+        if not isinstance(parsed, dict):
+            raise ToolExecutionError("Lark OpenAPI JSON output must be an object")
+        return parsed
+
+
+class OapiLarkProvider:
+    mode = ProviderMode.OAPI
+
+    def __init__(
+        self,
+        *,
+        access_token: str | None = None,
+        base_url: str = "https://open.feishu.cn",
+        runner: Callable[..., dict[str, Any]] | None = None,
+        timeout_s: int = 30,
+    ) -> None:
+        self.access_token = access_token or os.environ.get("LARK_OAPI_ACCESS_TOKEN")
+        self.base_url = base_url
+        self.runner = runner or OapiHttpRunner()
+        self.timeout_s = timeout_s
+
+    def call(self, operation: str, payload: dict[str, Any], *, dry_run: bool = False) -> dict[str, Any]:
+        if operation == "auth.status":
+            return {
+                "status": "configured" if self.access_token else "missing_token",
+                "provider": "oapi",
+                "base_url": self.base_url,
+            }
+        request = self._request(operation, payload)
+        if dry_run and operation in WRITE_OP_NAMES:
+            return {
+                "dry_run": True,
+                "provider": "oapi",
+                "method": request.method,
+                "path": request.path,
+                "params": request.params,
+                "json": request.body,
+            }
+        if not self.access_token:
+            raise ToolExecutionError("LARK_OAPI_ACCESS_TOKEN is required for OAPI provider")
+        return self.runner(base_url=self.base_url, request=request, token=self.access_token, timeout_s=self.timeout_s)
+
+    def _request(self, operation: str, payload: dict[str, Any]) -> OapiRequest:
+        if operation == "calendar.agenda":
+            return OapiRequest(
+                method="GET",
+                path="/open-apis/calendar/v4/calendars/primary/events",
+                params={
+                    "start_time": payload.get("start"),
+                    "end_time": payload.get("end"),
+                    "summary": payload.get("query"),
+                },
+                body={},
+            )
+        if operation == "vc.search":
+            return OapiRequest(
+                method="GET",
+                path="/open-apis/vc/v1/meetings",
+                params={"query": payload.get("query"), "start_time": payload.get("start"), "end_time": payload.get("end")},
+                body={},
+            )
+        if operation == "vc.notes":
+            meeting_id = payload.get("meeting_id") or payload.get("minute_token") or ""
+            return OapiRequest(
+                method="GET",
+                path=f"/open-apis/vc/v1/meetings/{urllib.parse.quote(str(meeting_id), safe='')}/notes",
+                params={},
+                body={},
+            )
+        if operation == "minutes.search":
+            return OapiRequest(
+                method="GET",
+                path="/open-apis/minutes/v1/minutes",
+                params={
+                    "query": payload.get("query"),
+                    "start_time": payload.get("start"),
+                    "end_time": payload.get("end"),
+                    "owner_ids": payload.get("owner_ids"),
+                    "participant_ids": payload.get("participant_ids"),
+                },
+                body={},
+            )
+        if operation == "docs.search":
+            return OapiRequest(
+                method="GET",
+                path="/open-apis/search/v2/data_search",
+                params={"query": payload.get("query"), "data_types": "doc,docx"},
+                body={},
+            )
+        if operation == "docs.fetch":
+            doc = payload.get("doc") or payload.get("token") or ""
+            return OapiRequest(
+                method="GET",
+                path=f"/open-apis/docx/v1/documents/{urllib.parse.quote(str(doc), safe='')}/raw_content",
+                params={},
+                body={},
+            )
+        if operation in {"task.search", "task.list"}:
+            return OapiRequest(
+                method="GET",
+                path="/open-apis/task/v2/tasks",
+                params={"summary": payload.get("query"), "status": payload.get("status")},
+                body={},
+            )
+        if operation == "docs.create":
+            return OapiRequest(
+                method="POST",
+                path="/open-apis/docx/v1/documents",
+                params={},
+                body={"title": payload.get("title") or "会议纪要", "content": payload.get("markdown") or ""},
+            )
+        if operation == "task.create":
+            body = {
+                "summary": payload.get("summary") or "会议待办",
+                "description": payload.get("description") or "",
+            }
+            if due := payload.get("due"):
+                body["due"] = due
+            if assignee := payload.get("assignee"):
+                body["assignee"] = assignee
+            return OapiRequest(method="POST", path="/open-apis/task/v2/tasks", params={}, body=body)
+        if operation == "im.send":
+            chat_id = payload.get("chat_id")
+            if not chat_id:
+                raise ToolExecutionError("chat_id is required for im.send")
+            content = {"text": payload.get("markdown") or payload.get("text") or ""}
+            return OapiRequest(
+                method="POST",
+                path="/open-apis/im/v1/messages",
+                params={"receive_id_type": "chat_id"},
+                body={"receive_id": chat_id, "msg_type": "text", "content": json.dumps(content, ensure_ascii=False)},
+            )
+        raise ToolOperationNotAllowedError(f"operation not allowlisted: {operation}")
+
+
 class LarkToolAdapter:
     READ_OPS = {
         "auth.status",
@@ -281,9 +467,9 @@ class LarkToolAdapter:
         "task.search",
         "task.list",
     }
-    WRITE_OPS = {"docs.create", "task.create", "im.send"}
+    WRITE_OPS = WRITE_OP_NAMES
 
-    def __init__(self, provider: FakeLarkProvider | CliLarkProvider, workspace: Path | str) -> None:
+    def __init__(self, provider: FakeLarkProvider | CliLarkProvider | OapiLarkProvider, workspace: Path | str) -> None:
         self.provider = provider
         self.workspace = Path(workspace)
         self.audit_events: list[ToolCallAuditEvent] = []
@@ -295,6 +481,17 @@ class LarkToolAdapter:
     @classmethod
     def cli(cls, workspace: Path | str) -> "LarkToolAdapter":
         return cls(CliLarkProvider(), workspace)
+
+    @classmethod
+    def oapi(
+        cls,
+        workspace: Path | str,
+        *,
+        access_token: str | None = None,
+        base_url: str = "https://open.feishu.cn",
+        runner: Callable[..., dict[str, Any]] | None = None,
+    ) -> "LarkToolAdapter":
+        return cls(OapiLarkProvider(access_token=access_token, base_url=base_url, runner=runner), workspace)
 
     def execute(
         self,

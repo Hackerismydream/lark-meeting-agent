@@ -1,6 +1,6 @@
-# OapiLarkProvider Plan
+# OapiLarkProvider Status
 
-`CliLarkProvider` is useful for local real smoke and diagnostics, but production Feishu bot deployment should move toward an OpenAPI-backed provider.
+`CliLarkProvider` is useful for local real smoke and diagnostics. Production Feishu bot deployment now has a thin OpenAPI-backed provider boundary behind `LarkToolAdapter`.
 
 ## Provider Roles
 
@@ -12,14 +12,14 @@ CliLarkProvider
   -> local demos, real smoke, troubleshooting.
 
 OapiLarkProvider
-  -> production bot target.
+  -> production bot target and direct OpenAPI request boundary.
 ```
 
 All providers must remain behind `LarkToolAdapter`.
 
-## Target Operations
+## Implemented Operations
 
-Production MVP should implement only operations needed for the bot:
+The MVP provider maps only operations needed for the bot:
 
 - `auth.status` or equivalent credential health check,
 - `vc.search` or minutes search,
@@ -28,9 +28,13 @@ Production MVP should implement only operations needed for the bot:
 - `task.create`,
 - `im.send`.
 
+Write operations support `dry_run=True` previews without sending HTTP. Real writes still require `LarkToolAdapter` approval.
+
 ## Token and Identity Model
 
-The provider design must explicitly handle:
+The current provider accepts an already-issued access token through constructor injection or `LARK_OAPI_ACCESS_TOKEN`.
+
+Still-open production work:
 
 - app ID and app secret,
 - tenant access token,
@@ -51,4 +55,4 @@ The provider design must explicitly handle:
 
 ## Current Status
 
-Not implemented. Until this provider exists, the production bot track is architecture/spec and local diagnostic execution remains based on `CliLarkProvider`.
+Implemented as a thin standard-library HTTP provider with fake-runner tests. Real Feishu app deployment, token refresh, scope verification, and end-to-end OpenAPI smoke remain pending. Until those are verified, this is an OpenAPI provider boundary, not a production deployment claim.

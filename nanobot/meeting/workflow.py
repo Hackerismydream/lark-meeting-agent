@@ -284,6 +284,8 @@ class PostMeetingWorkflow:
         value = ProviderMode(mode).value
         if value == "fake":
             return LarkToolAdapter.fake(self.workspace)
+        if value == "oapi":
+            return LarkToolAdapter.oapi(self.workspace)
         return LarkToolAdapter.cli(self.workspace)
 
 

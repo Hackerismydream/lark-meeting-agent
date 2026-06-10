@@ -13,7 +13,8 @@ export LMA_LLM_BASE_URL="https://api.deepseek.com"
 export LMA_LLM_MODEL="deepseek-v4-pro"
 
 # Meeting agent production config
-export LMA_PROVIDER_MODE="oapi"          # target; cli remains diagnostic until OapiLarkProvider is implemented
+export LMA_PROVIDER_MODE="oapi"          # production target provider; cli remains diagnostic
+export LARK_OAPI_ACCESS_TOKEN=""         # tenant/user token; do not commit real values
 export LMA_STORAGE_BACKEND="sqlite"
 export LMA_SQLITE_PATH="/var/lib/lark-meeting-agent/meeting-agent.sqlite3"
 export LMA_WRITES_ENABLED="false"        # enable only after approval protocol is verified

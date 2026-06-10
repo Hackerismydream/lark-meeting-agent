@@ -116,7 +116,7 @@ Production target:
 
 - `OapiLarkProvider` using Feishu/Lark OpenAPI credentials behind the same `LarkToolAdapter`.
 
-Until `OapiLarkProvider` is implemented and verified, production deployment is a target architecture, not a completed claim.
+`OapiLarkProvider` exists as a thin HTTP provider boundary. Until a real Feishu app, token lifecycle, scopes, and end-to-end smoke are verified, production deployment remains a target architecture, not a completed claim.
 
 ## Deployment Verification
 

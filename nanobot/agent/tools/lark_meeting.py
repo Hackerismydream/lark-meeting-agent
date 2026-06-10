@@ -76,7 +76,7 @@ class LarkMeetingTool(Tool):
                 "create_tasks": {"type": "boolean"},
                 "send_message": {"type": "boolean"},
                 "chat_id": {"type": ["string", "null"]},
-                "provider_mode": {"type": "string", "enum": ["fake", "cli"]},
+                "provider_mode": {"type": "string", "enum": ["fake", "cli", "oapi"]},
                 "analyzer_mode": {"type": "string", "enum": ["fake", "llm"]},
                 "dry_run": {"type": "boolean"},
                 "meeting_type": {
