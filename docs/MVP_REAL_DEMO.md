@@ -26,7 +26,19 @@ Browser authorization may be required.
 
 ## LLM Setup
 
-DeepSeek OpenAI-compatible defaults:
+This machine stores the DeepSeek API key in macOS Keychain service
+`lark-meeting-agent.deepseek-api-key`. The repo does not store the key.
+
+Preferred helper:
+
+```bash
+scripts/lma-real status
+```
+
+The helper defaults `LARK_CLI_NO_PROXY=1` so Lark credential checks do not
+transit through a local proxy unless explicitly overridden.
+
+Manual DeepSeek OpenAI-compatible defaults:
 
 ```bash
 export LMA_LLM_API_KEY="..."
@@ -57,6 +69,19 @@ Expected:
 - does not write to Lark.
 
 ## Real Dry-run Process Demo
+
+Preferred local helper:
+
+```bash
+scripts/lma-real process \
+  --latest-ended \
+  --query "项目例会" \
+  --create-doc \
+  --create-tasks \
+  --dry-run
+```
+
+Manual equivalent:
 
 ```bash
 python -m nanobot.meeting.cli process \
