@@ -77,18 +77,21 @@ Supported helper commands:
 ```bash
 scripts/lma-real status
 scripts/lma-real prebrief --query "项目例会" --meeting-type project_sync --project Alpha
+scripts/lma-real live-join --meeting-number <9-digit-meeting-number> --approve-visible-join
+scripts/lma-real live-poll --meeting-id <returned-long-meeting-id> --live-run-id <returned-live-run-id>
+scripts/lma-real live-leave --meeting-id <returned-long-meeting-id> --approve-visible-leave
 scripts/lma-real process --latest-ended --query "项目例会" --create-doc --create-tasks --dry-run
 scripts/lma-real approve --run-id <run_id> --operation-ids <op1,op2>
 ```
 
-The current account can authenticate and search visible VC meetings, but readable minutes/transcript content remains account-data dependent. The real transcript blocker is documented in `docs/BLOCKERS.md`.
+The primary real path is now live meeting listening and requires a currently running 9-digit meeting number. The current account can authenticate and search visible VC meetings, but readable historical minutes/transcript content remains account-data dependent. That historical limitation is documented in `docs/BLOCKERS.md`.
 
 Operation-level real-smoke status is tracked in `docs/LARK_CLI_VERIFICATION_MATRIX.md`.
 
 ## Not Claimed
 
 - No custom ASR.
-- No automatic meeting bot join.
+- No invisible or automatic meeting capture.
 - No unapproved realtime VC control.
 - No production OAuth onboarding.
 - No mandatory PostgreSQL/vector database service.

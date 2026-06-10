@@ -4,8 +4,9 @@
 
 1. Install the project in editable mode.
 2. Install and authenticate `lark-cli`.
-3. Prepare a completed Feishu/Lark meeting with transcript or minutes.
-4. Configure an OpenAI-compatible LLM provider.
+3. For the primary real demo, prepare a currently running Feishu/Lark meeting with a 9-digit meeting number.
+4. For optional historical enrichment, prepare a completed meeting with readable transcript or minutes.
+5. Configure an OpenAI-compatible LLM provider.
 
 ## Install
 
@@ -68,7 +69,39 @@ Expected:
 - returns WritePlan,
 - does not write to Lark.
 
-## Real Dry-run Process Demo
+## Real Live Listener Demo
+
+This is the primary real path. Join and leave are visible to meeting participants, so the commands require explicit approval flags.
+
+```bash
+join_json=$(scripts/lma-real live-join \
+  --meeting-number <9-digit-meeting-number> \
+  --approve-visible-join)
+live_run_id=$(printf '%s' "$join_json" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["live_run_id"])')
+meeting_id=$(printf '%s' "$join_json" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["meeting_id"])')
+
+scripts/lma-real live-poll \
+  --meeting-id "$meeting_id" \
+  --live-run-id "$live_run_id"
+
+scripts/lma-real live-qa \
+  --live-run-id "$live_run_id" \
+  --question "目前有哪些结论和待办？"
+
+scripts/lma-real live-leave \
+  --meeting-id "$meeting_id" \
+  --approve-visible-leave
+```
+
+Expected:
+
+- the bot visibly joins the in-progress meeting,
+- `lark-cli vc +meeting-events` returns live event data,
+- transcript/chat events become sourced live state,
+- live QA returns sources or insufficient evidence,
+- the bot leaves after explicit approval.
+
+## Optional Historical Dry-run Process Demo
 
 Preferred local helper:
 
@@ -94,9 +127,9 @@ python -m nanobot.meeting.cli process \
   --dry-run
 ```
 
-Expected:
+Expected if the account can read historical minutes/notes:
 
-- calls `lark-cli` to find/fetch meeting notes,
+- calls `lark-cli` to find/fetch historical meeting notes,
 - calls configured LLM,
 - returns structured minutes,
 - returns WritePlan,

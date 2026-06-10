@@ -1,12 +1,14 @@
 # Blockers
 
-## Real Lark Meeting Transcript Gate
+## Historical Lark Meeting Minutes Gate
 
-Status: blocked by missing real meeting transcript/minutes data in the currently authorized Feishu/Lark account.
+Status: optional historical enrichment is blocked by missing readable meeting transcript/minutes data in the currently authorized Feishu/Lark account.
+
+This is no longer the primary product gate. The product direction is live meeting listening: explicitly join an in-progress meeting, poll live meeting events, and build meeting intelligence from the transcript/chat deltas observed while the bot is present.
 
 The repository implementation, OpenSpec delivery changes, fake CI gates, local real-mode helper, DeepSeek real LLM dry-run, lifecycle fake benchmark, and `lark-cli` user authorization are in place.
 
-The project is currently best described as a lifecycle local MVP: post-meeting is the most complete closed-loop workflow; pre-brief and live support are implemented for controlled local/fake inputs and supplied transcript/event deltas. The project does not claim automatic meeting bot join, custom ASR, production OAuth, PostgreSQL/vector DB deployment, or production Feishu rollout.
+The project is currently best described as a lifecycle local MVP: live listener is the primary real acquisition path; post-meeting remains the most complete writeback workflow; pre-brief and memory/QA support are implemented through controlled workflows. The project does not claim invisible meeting capture, custom ASR, production OAuth, PostgreSQL/vector DB deployment, or production Feishu rollout.
 
 The remaining external-data limitation is that the currently authorized Feishu/Lark user has meetings visible to `vc +search`, but those meetings do not have readable notes/minute transcript content. `minutes +search` is also authorized and returns zero accessible minute records for the checked date ranges.
 
@@ -50,7 +52,7 @@ ok: true
 count: 0 accessible minute records
 ```
 
-Current helper command:
+Historical helper command:
 
 ```bash
 scripts/lma-real transcript-gate --start 2026-05-01 --end 2026-06-10 --limit 10
@@ -79,11 +81,28 @@ reason: all 1 queries failed
 - Avoided committing authorization URLs, device codes, or secrets.
 - Added `docs/LARK_CLI_VERIFICATION_MATRIX.md` to separate adapter implementation from real smoke status.
 
-## Remaining Decision or Action Needed
+## Primary Real Gate
 
-To complete the real Lark transcript gate, provide or create at least one Feishu/Lark meeting/minute that has readable transcript or minutes content for the authorized user.
+To validate the primary real path, start or provide a currently running Feishu/Lark meeting with a 9-digit meeting number, then run:
 
-Then run:
+```bash
+scripts/lma-real live-join --meeting-number <9-digit-meeting-number> --approve-visible-join
+scripts/lma-real live-poll --meeting-id <returned-long-meeting-id> --live-run-id <returned-live-run-id>
+scripts/lma-real live-qa --live-run-id <returned-live-run-id> --question "目前有哪些结论和待办？"
+scripts/lma-real live-leave --meeting-id <returned-long-meeting-id> --approve-visible-leave
+```
+
+Pass condition:
+
+- the bot visibly joins the meeting,
+- `vc.meeting.events` returns live events,
+- transcript/chat events are converted into sourced live state,
+- live QA cites meeting/segment/speaker/timestamp where available,
+- the bot leaves when explicitly approved.
+
+## Optional Historical Enrichment
+
+To test optional historical minutes enrichment, provide or create at least one Feishu/Lark meeting/minute that has readable transcript or minutes content for the authorized user. Then run:
 
 ```bash
 scripts/lma-real transcript-gate --query "<meeting keyword>"
@@ -98,10 +117,10 @@ scripts/lma-real prebrief --query "<meeting keyword>" --meeting-type project_syn
 
 ## Safest Next Prompt
 
-After a meeting with readable notes/minutes exists, tell Codex:
+For the primary live path, tell Codex:
 
 ```text
-已有可读取妙记/会议纪要，继续真实 Lark dry-run gate
+我开了一个正在进行的飞书会议，会议号是 <9位会议号>，继续 live listener gate
 ```
 
-Codex should then run the real dry-run, update `openspec/changes/deliver-nanobot-meeting-mvp/tasks.md`, commit the evidence update, and push the branch.
+Codex should then run the real visible join, event poll, live QA, leave flow, update the live listener evidence docs/tasks, commit the evidence update, and push the branch.

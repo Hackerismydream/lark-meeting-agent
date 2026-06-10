@@ -171,3 +171,37 @@ async def test_lark_meeting_tool_routes_lifecycle_actions(tmp_path: Path) -> Non
     assert live_answer["sources"]
     assert report["passed"] is True
     assert (tmp_path / "eval.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_lark_meeting_tool_routes_live_lark_listener_actions(tmp_path: Path) -> None:
+    tool = LarkMeetingTool(workspace=tmp_path)
+
+    session = json.loads(
+        await tool.execute(
+            action="live_join",
+            provider_mode="fake",
+            meeting_number="123456789",
+            approve_visible_join=True,
+        )
+    )
+    poll = json.loads(
+        await tool.execute(
+            action="live_poll",
+            provider_mode="fake",
+            meeting_ref_value=session["meeting_id"],
+            live_run_id=session["live_run_id"],
+        )
+    )
+    leave = json.loads(
+        await tool.execute(
+            action="live_leave",
+            provider_mode="fake",
+            meeting_ref_value=session["meeting_id"],
+            approve_visible_leave=True,
+        )
+    )
+
+    assert session["meeting_id"] == "live-meeting-1"
+    assert poll["state"]["transcript_segments"]
+    assert leave["status"] == "left"

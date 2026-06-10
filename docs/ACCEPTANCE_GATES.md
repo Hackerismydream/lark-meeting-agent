@@ -24,6 +24,7 @@ Must not contain committed secrets, standalone FastAPI MVP core, custom ASR, or 
 uv run python -m pytest tests/meeting -q
 uv run ruff check nanobot tests
 openspec validate deliver-nanobot-meeting-mvp
+openspec validate pivot-live-meeting-listener
 ```
 
 ## Gate 3: Safety
@@ -51,7 +52,18 @@ scripts/lma-real process \
 
 Expected: structured minutes, evidence references, WritePlan, no writes.
 
-## Gate 5: Real lark-cli Dry-run
+## Gate 5: Real Live Listener
+
+```bash
+scripts/lma-real live-join --meeting-number <9-digit-meeting-number> --approve-visible-join
+scripts/lma-real live-poll --meeting-id <returned-long-meeting-id> --live-run-id <returned-live-run-id>
+scripts/lma-real live-qa --live-run-id <returned-live-run-id> --question "目前有哪些结论和待办？"
+scripts/lma-real live-leave --meeting-id <returned-long-meeting-id> --approve-visible-leave
+```
+
+Expected: visible bot join, live event polling, sourced live state/QA, visible bot leave.
+
+## Gate 6: Optional Historical lark-cli Dry-run
 
 ```bash
 scripts/lma-real process \
@@ -64,7 +76,7 @@ scripts/lma-real process \
 
 Expected: real meeting read, real LLM analysis, WritePlan, no writes.
 
-## Gate 6: Approval-gated Real Writes
+## Gate 7: Approval-gated Real Writes
 
 ```bash
 scripts/lma-real approve \
@@ -74,7 +86,7 @@ scripts/lma-real approve \
 
 Expected: only selected operations execute, results and audit events persist, unapproved operations are skipped.
 
-## Gate 7: Cross-meeting QA
+## Gate 8: Cross-meeting QA
 
 ```bash
 scripts/lma-real qa --question "上次为什么决定延期上线？"

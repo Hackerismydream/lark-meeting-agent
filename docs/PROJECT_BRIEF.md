@@ -8,7 +8,7 @@ Chinese name: Feishu meeting workflow agent
 
 ## 2. One-line Description
 
-Lark Meeting Agent is a Feishu/Lark-native lifecycle local MVP. It turns meeting transcripts and supplied meeting events into structured minutes, decisions, action items, risks, sourced briefs, and local meeting memory, then safely syncs approved outcomes to Lark docs, tasks, and IM messages.
+Lark Meeting Agent is a Feishu/Lark-native lifecycle local MVP. It joins live meetings with explicit approval, listens to Lark meeting events, turns transcript/chat deltas into structured decisions, action items, risks, sourced briefs, and local meeting memory, then safely syncs approved outcomes to Lark docs, tasks, and IM messages.
 
 ## 3. Product Positioning
 
@@ -65,7 +65,9 @@ Before meeting
   -> generate pre-brief
 
 During meeting
-  -> ingest transcript/event deltas
+  -> visible bot joins with approval
+  -> poll Lark meeting events
+  -> ingest transcript/chat/event deltas
   -> maintain rolling summary
   -> detect decision/action candidates
   -> answer real-time questions
@@ -93,7 +95,7 @@ The current repository implements the lifecycle local MVP shape around the origi
 Implemented now:
 
 - pre-meeting brief generation from agenda, related docs/tasks, historical meeting memory, entity memory, retrieval, and templates,
-- live supplied transcript/event ingestion with rolling summary, decision/action/risk/question candidates, and source-grounded live QA,
+- live supplied transcript/event ingestion plus controlled real Lark live join/event polling/leave, rolling summary, decision/action/risk/question candidates, and source-grounded live QA,
 - post-meeting transcript processing, structured minutes, evidence-linked decisions/action items, risks, open questions, write plans, and approval-gated writes,
 - layered JSONL memory for meetings, transcript segments, minutes, decisions, action items, risks, open questions, entity memories, traces, and retrieval metadata,
 - cross-meeting retrieval and QA with structured/keyword search plus an optional semantic retrieval interface,
@@ -102,7 +104,7 @@ Implemented now:
 Not implemented in this change:
 
 - custom ASR,
-- automatic bot join,
+- invisible or unapproved bot join,
 - unapproved realtime VC control,
 - production OAuth onboarding,
 - mandatory PostgreSQL/vector database service.
@@ -197,7 +199,9 @@ Feishu / WebUI / CLI / other nanobot channels
           -> Retrieve history and open actions
           -> Generate sourced pre-brief
       -> deterministic LiveMeetingWorkflow
-          -> Ingest transcript/event deltas
+          -> Join live meetings through LarkToolAdapter when explicitly approved
+          -> Poll Lark meeting events
+          -> Ingest transcript/chat/event deltas
           -> Maintain rolling state
           -> Answer live QA with sources
       -> deterministic PostMeetingWorkflow
@@ -274,6 +278,7 @@ nanobot AgentLoop may route user messages into the meeting entrypoint, but the w
 
 - `PreBriefWorkflow` for read-only agenda/docs/tasks/memory context and templates,
 - `LiveMeetingWorkflow` for supplied transcript/event deltas,
+- `LiveLarkMeetingWorkflow` for approved live join, event polling, event conversion, and approved leave,
 - `MemoryWorkflow` for layered records and entity memory,
 - retrieval engine with structured filters and keyword scoring,
 - run trace persistence and redaction,
@@ -286,7 +291,8 @@ nanobot AgentLoop may route user messages into the meeting entrypoint, but the w
 - write operation idempotency,
 - Lark CLI verification matrix,
 - optional LLM extraction benchmark contract,
-- documentation truthfulness.
+- documentation truthfulness,
+- live listener product pivot away from paid minutes as the primary gate.
 
 ### Planned: Production Feishu Bot
 
@@ -297,7 +303,7 @@ nanobot AgentLoop may route user messages into the meeting entrypoint, but the w
 - bot-friendly approval and rejection protocol,
 - repository abstraction and SQLite production MVP storage,
 - production deployment docs and safety checklist,
-- real transcript gate workflow,
+- live listener real gate workflow,
 - OpenAPI provider plan.
 
 ### Planned: macOS Companion App

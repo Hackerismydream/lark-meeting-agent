@@ -61,6 +61,12 @@ case "$subcommand" in
     shift || true
     exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
     ;;
+  live-join|live-poll|live-leave)
+    shift || true
+    exec uv run python -m nanobot.meeting.cli "$subcommand" \
+      --provider-mode "$LMA_PROVIDER_MODE" \
+      "$@"
+    ;;
   status)
     lark-cli auth status --verify
     ;;

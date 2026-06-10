@@ -9,8 +9,10 @@ from pathlib import Path
 from nanobot.meeting.memory import MeetingMemoryStore
 from nanobot.meeting.evals import LifecycleEvaluator
 from nanobot.meeting.live import LiveMeetingWorkflow
+from nanobot.meeting.live_lark import LiveLarkMeetingWorkflow
 from nanobot.meeting.prebrief import PreBriefWorkflow
 from nanobot.meeting.schemas import (
+    ApprovalStatus,
     LiveEventKind,
     LiveMeetingEvent,
     MeetingRef,
@@ -70,6 +72,13 @@ def main(argv: list[str] | None = None) -> int:
     live_start.add_argument("--meeting-id", required=True)
     live_start.add_argument("--title", default="live meeting")
 
+    live_join = sub.add_parser("live-join")
+    live_join.add_argument("--meeting-number", required=True)
+    live_join.add_argument("--password")
+    live_join.add_argument("--title", default="live meeting")
+    live_join.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
+    live_join.add_argument("--approve-visible-join", action="store_true")
+
     live_ingest = sub.add_parser("live-ingest")
     live_ingest.add_argument("--live-run-id", required=True)
     live_ingest.add_argument("--meeting-id", required=True)
@@ -81,6 +90,20 @@ def main(argv: list[str] | None = None) -> int:
     live_qa = sub.add_parser("live-qa")
     live_qa.add_argument("--live-run-id", required=True)
     live_qa.add_argument("--question", required=True)
+
+    live_poll = sub.add_parser("live-poll")
+    live_poll.add_argument("--meeting-id", required=True)
+    live_poll.add_argument("--live-run-id", required=True)
+    live_poll.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
+    live_poll.add_argument("--page-token")
+    live_poll.add_argument("--no-page-all", action="store_true")
+    live_poll.add_argument("--start")
+    live_poll.add_argument("--end")
+
+    live_leave = sub.add_parser("live-leave")
+    live_leave.add_argument("--meeting-id", required=True)
+    live_leave.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
+    live_leave.add_argument("--approve-visible-leave", action="store_true")
 
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--cases", default="tests/fixtures/meeting/evaluation/lifecycle_cases.json")
@@ -151,6 +174,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "live-start":
         print(LiveMeetingWorkflow(workspace).start(args.meeting_id, args.title).model_dump_json(indent=2))
         return 0
+    if args.command == "live-join":
+        approved = ApprovalStatus.APPROVED if args.approve_visible_join else ApprovalStatus.PENDING
+        result = LiveLarkMeetingWorkflow(workspace, args.provider_mode).join(
+            meeting_number=args.meeting_number,
+            password=args.password,
+            title=args.title,
+            dry_run=not args.approve_visible_join,
+            approval_status=approved,
+        )
+        print(result.model_dump_json(indent=2))
+        return 0
     if args.command == "live-ingest":
         event = LiveMeetingEvent(
             event_id="cli-event",
@@ -165,6 +199,26 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "live-qa":
         print(LiveMeetingWorkflow(workspace).qa(args.live_run_id, args.question).model_dump_json(indent=2))
+        return 0
+    if args.command == "live-poll":
+        result = LiveLarkMeetingWorkflow(workspace, args.provider_mode).poll(
+            args.meeting_id,
+            live_run_id=args.live_run_id,
+            page_token=args.page_token,
+            page_all=not args.no_page_all,
+            start=args.start,
+            end=args.end,
+        )
+        print(result.model_dump_json(indent=2))
+        return 0
+    if args.command == "live-leave":
+        approved = ApprovalStatus.APPROVED if args.approve_visible_leave else ApprovalStatus.PENDING
+        result = LiveLarkMeetingWorkflow(workspace, args.provider_mode).leave(
+            args.meeting_id,
+            dry_run=not args.approve_visible_leave,
+            approval_status=approved,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     if args.command == "evaluate":
         report = LifecycleEvaluator(workspace).evaluate_file(args.cases, args.output)

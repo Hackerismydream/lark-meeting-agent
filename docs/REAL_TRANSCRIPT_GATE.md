@@ -1,8 +1,8 @@
-# Real Transcript Gate
+# Historical Transcript Gate
 
-The production bot is only useful if it can read at least one real meeting transcript or minutes record for the authorized user or bot identity.
+This gate now covers optional historical transcript/minutes enrichment only. The primary product gate is live meeting listening; see `docs/LIVE_MEETING_LISTENER.md`.
 
-Current status: blocked by account data. The local `lark-cli` auth and meeting search path work, but the current account has no readable meeting minutes/transcript content for checked meetings.
+Current historical status: blocked by account data. The local `lark-cli` auth and meeting search path work, but the current account has no readable meeting minutes/transcript content for checked meetings.
 
 ## Verification Steps
 
@@ -30,11 +30,11 @@ Try minutes search:
 LARK_CLI_NO_PROXY=1 lark-cli minutes +search --format json --as user --start 2020-01-01 --end 2026-06-10
 ```
 
-Pass condition:
+Historical pass condition:
 
 - At least one command returns readable transcript/minutes text that can be normalized.
 
-Blocked condition:
+Historical blocked condition:
 
 - Meetings are visible, but notes/minutes return no notes, no minute file, no permission, or zero accessible minute records.
 
@@ -56,4 +56,4 @@ Expected result:
 
 ## Notes
 
-Do not treat missing readable minutes as a code failure if auth/search paths work. Record the account-data blocker in `docs/BLOCKERS.md`.
+Do not treat missing readable minutes as a code failure if auth/search paths work. It only blocks optional historical enrichment. Record the account-data limitation in `docs/BLOCKERS.md` and use the live listener gate as the primary real validation path.

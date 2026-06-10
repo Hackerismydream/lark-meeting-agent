@@ -133,6 +133,68 @@ def test_calendar_write_stays_rejected(tmp_path: Path) -> None:
         adapter.execute("calendar.create", {}, dry_run=True)
 
 
+def test_fake_provider_supports_live_meeting_listener_ops(tmp_path: Path) -> None:
+    adapter = LarkToolAdapter.fake(workspace=tmp_path)
+
+    join_preview = adapter.execute("vc.meeting.join", {"meeting_number": "123456789"}, dry_run=True)
+    join_result = adapter.execute(
+        "vc.meeting.join",
+        {"meeting_number": "123456789"},
+        dry_run=False,
+        approval_status=ApprovalStatus.APPROVED,
+    )
+    events = adapter.execute("vc.meeting.events", {"meeting_id": join_result["meeting"]["id"], "page_all": True})
+    leave_result = adapter.execute(
+        "vc.meeting.leave",
+        {"meeting_id": join_result["meeting"]["id"]},
+        dry_run=False,
+        approval_status=ApprovalStatus.APPROVED,
+    )
+
+    assert join_preview["dry_run"] is True
+    assert join_result["meeting"]["id"] == "live-meeting-1"
+    assert any(event["event_type"] == "transcript_received" for event in events["events"])
+    assert leave_result["status"] == "left"
+    assert adapter.audit_events[-1].operation_name == "vc.meeting.leave"
+
+
+def test_live_meeting_join_and_leave_are_approval_gated(tmp_path: Path) -> None:
+    adapter = LarkToolAdapter.fake(workspace=tmp_path)
+
+    with pytest.raises(ApprovalRequiredError):
+        adapter.execute("vc.meeting.join", {"meeting_number": "123456789"}, dry_run=False)
+
+    with pytest.raises(ApprovalRequiredError):
+        adapter.execute("vc.meeting.leave", {"meeting_id": "live-meeting-1"}, dry_run=False)
+
+
+def test_cli_provider_builds_live_meeting_argument_lists() -> None:
+    seen: list[list[str]] = []
+
+    def runner(argv: list[str], timeout_s: int) -> CommandResult:
+        seen.append(argv)
+        if "+meeting-join" in argv:
+            return CommandResult(argv=argv, exit_code=0, stdout=json.dumps({"meeting": {"id": "live-meeting-1"}}), stderr="")
+        if "+meeting-events" in argv:
+            return CommandResult(argv=argv, exit_code=0, stdout=json.dumps({"events": []}), stderr="")
+        return CommandResult(argv=argv, exit_code=0, stdout=json.dumps({"status": "left"}), stderr="")
+
+    provider = CliLarkProvider(runner=runner)
+
+    provider.call("vc.meeting.join", {"meeting_number": "123456789"}, dry_run=True)
+    provider.call("vc.meeting.events", {"meeting_id": "live-meeting-1", "page_all": True}, dry_run=False)
+    provider.call("vc.meeting.leave", {"meeting_id": "live-meeting-1"}, dry_run=False)
+
+    assert seen[0][:3] == ["lark-cli", "vc", "+meeting-join"]
+    assert "--meeting-number" in seen[0]
+    assert "--dry-run" in seen[0]
+    assert seen[1][:3] == ["lark-cli", "vc", "+meeting-events"]
+    assert "--meeting-id" in seen[1]
+    assert "--page-all" in seen[1]
+    assert seen[2][:3] == ["lark-cli", "vc", "+meeting-leave"]
+    assert "--meeting-id" in seen[2]
+
+
 def test_oapi_provider_maps_read_request_and_passes_token(tmp_path: Path) -> None:
     seen: dict[str, object] = {}
 

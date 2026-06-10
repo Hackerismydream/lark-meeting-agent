@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from nanobot.agent.tools.base import Tool
 from nanobot.meeting.evals import LifecycleEvaluator
 from nanobot.meeting.live import LiveMeetingWorkflow
+from nanobot.meeting.live_lark import LiveLarkMeetingWorkflow
 from nanobot.meeting.memory import MeetingMemoryStore
 from nanobot.meeting.prebrief import PreBriefWorkflow
 from nanobot.meeting.production import MeetingAgentAccessPolicy, MeetingBotContext, ProductionMeetingBot
 from nanobot.meeting.schemas import (
+    ApprovalStatus,
     LiveEventKind,
     LiveMeetingEvent,
     MeetingRef,
@@ -45,6 +48,9 @@ class LarkMeetingTool(Tool):
                     "enum": [
                         "bot_message",
                         "prebrief",
+                        "live_join",
+                        "live_poll",
+                        "live_leave",
                         "live_ingest",
                         "live_qa",
                         "process",
@@ -93,6 +99,11 @@ class LarkMeetingTool(Tool):
                 },
                 "project": {"type": ["string", "null"]},
                 "customer": {"type": ["string", "null"]},
+                "meeting_number": {"type": ["string", "null"]},
+                "meeting_password": {"type": ["string", "null"]},
+                "approve_visible_join": {"type": "boolean"},
+                "approve_visible_leave": {"type": "boolean"},
+                "page_token": {"type": ["string", "null"]},
                 "live_run_id": {"type": ["string", "null"]},
                 "event_text": {"type": ["string", "null"]},
                 "event_kind": {
@@ -156,6 +167,42 @@ class LarkMeetingTool(Tool):
                 )
             )
             return result.model_dump_json(indent=2)
+        if action == "live_join":
+            meeting_number = kwargs.get("meeting_number")
+            if not meeting_number:
+                return "Error: meeting_number is required for live_join"
+            approved = ApprovalStatus.APPROVED if kwargs.get("approve_visible_join") else ApprovalStatus.PENDING
+            result = LiveLarkMeetingWorkflow(self.workspace, provider_mode).join(
+                meeting_number=str(meeting_number),
+                password=kwargs.get("meeting_password"),
+                dry_run=not bool(kwargs.get("approve_visible_join")),
+                approval_status=approved,
+            )
+            return result.model_dump_json(indent=2)
+        if action == "live_poll":
+            meeting_id = kwargs.get("meeting_ref_value") or kwargs.get("meeting_id")
+            live_run_id = kwargs.get("live_run_id")
+            if not meeting_id:
+                return "Error: meeting_ref_value is required for live_poll"
+            if not live_run_id:
+                return "Error: live_run_id is required for live_poll"
+            result = LiveLarkMeetingWorkflow(self.workspace, provider_mode).poll(
+                str(meeting_id),
+                live_run_id=str(live_run_id),
+                page_token=kwargs.get("page_token"),
+            )
+            return result.model_dump_json(indent=2)
+        if action == "live_leave":
+            meeting_id = kwargs.get("meeting_ref_value") or kwargs.get("meeting_id")
+            if not meeting_id:
+                return "Error: meeting_ref_value is required for live_leave"
+            approved = ApprovalStatus.APPROVED if kwargs.get("approve_visible_leave") else ApprovalStatus.PENDING
+            result = LiveLarkMeetingWorkflow(self.workspace, provider_mode).leave(
+                str(meeting_id),
+                dry_run=not bool(kwargs.get("approve_visible_leave")),
+                approval_status=approved,
+            )
+            return json.dumps(result, ensure_ascii=False, indent=2)
         if action == "live_ingest":
             live_run_id = kwargs.get("live_run_id")
             meeting_id = kwargs.get("meeting_ref_value") or kwargs.get("meeting_id") or "live-meeting"

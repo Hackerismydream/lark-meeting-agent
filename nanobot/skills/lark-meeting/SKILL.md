@@ -9,6 +9,12 @@ Use the `lark_meeting` tool for meeting workflows.
 
 Use `action="prebrief"` when the user asks to prepare for an upcoming meeting, summarize historical context, find open action items, or produce suggested questions.
 
+Use `action="live_join"` when the user explicitly asks the bot to join an in-progress Lark/Feishu meeting and provides a 9-digit meeting number. Join is visible and requires explicit approval.
+
+Use `action="live_poll"` when the bot has already joined and the user asks what is happening in the current meeting. Poll with the long `meeting_id` returned by join.
+
+Use `action="live_leave"` when the task is complete or the user asks the bot to leave. Leave is visible and requires explicit approval.
+
 Use `action="live_ingest"` when the user provides an in-meeting transcript/event delta that should update the current rolling meeting state.
 
 Use `action="live_qa"` when the user asks in-meeting questions such as what was just discussed, what conclusions exist so far, or who committed to what.
@@ -29,4 +35,4 @@ Do not invent action item owners or due dates. If evidence is missing, say the i
 
 Real writes require approval. The process action only returns a WritePlan.
 
-Do not claim automatic meeting bot join, custom ASR, or unapproved realtime VC control. Live meeting support consumes transcript/event input supplied to the workflow.
+Do not claim invisible meeting capture, custom ASR, or unapproved realtime VC control. Live join and leave are allowed only through `LarkToolAdapter` after explicit approval.

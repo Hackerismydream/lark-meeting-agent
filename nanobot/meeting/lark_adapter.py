@@ -28,7 +28,7 @@ from nanobot.meeting.schemas import (
     ToolCallAuditEvent,
 )
 
-WRITE_OP_NAMES = {"docs.create", "task.create", "im.send"}
+WRITE_OP_NAMES = {"docs.create", "task.create", "im.send", "vc.meeting.join", "vc.meeting.leave"}
 
 
 @dataclass
@@ -124,6 +124,38 @@ class FakeLarkProvider:
             return {"message_id": "om_fake", "chat_id": payload.get("chat_id")}
         if operation == "auth.status":
             return {"status": "ok", "provider": "fake"}
+        if operation == "vc.meeting.join":
+            return {
+                "dry_run": dry_run,
+                "meeting": {
+                    "id": "live-meeting-1",
+                    "meeting_number": payload.get("meeting_number") or "123456789",
+                    "topic": "项目例会",
+                },
+            }
+        if operation == "vc.meeting.events":
+            return {
+                "events": [
+                    {
+                        "event_id": "evt-live-1",
+                        "event_type": "transcript_received",
+                        "start_time": "00:01",
+                        "speaker": {"name": "Alice", "open_id": "ou_alice"},
+                        "transcript": {"text": "Alice 决定先灰度上线。"},
+                    },
+                    {
+                        "event_id": "evt-live-2",
+                        "event_type": "transcript_received",
+                        "start_time": "00:02",
+                        "speaker": {"name": "Bob", "open_id": "ou_bob"},
+                        "transcript": {"text": "Bob 负责补充风险清单。"},
+                    },
+                ],
+                "has_more": False,
+                "page_token": "page-token-1",
+            }
+        if operation == "vc.meeting.leave":
+            return {"status": "left", "meeting_id": payload.get("meeting_id")}
         raise ToolOperationNotAllowedError(f"unknown fake operation: {operation}")
 
     def _read_json(self, name: str) -> dict[str, Any]:
@@ -187,6 +219,35 @@ class CliLarkProvider:
             self._add_any(argv, payload, "minute_token", "--minute-tokens")
             self._add_any(argv, payload, "calendar_event_id", "--calendar-event-ids")
             return argv
+        if operation == "vc.meeting.join":
+            meeting_number = payload.get("meeting_number")
+            if not meeting_number:
+                raise ToolExecutionError("meeting_number is required for vc.meeting.join")
+            argv = ["lark-cli", "vc", "+meeting-join", *common, "--meeting-number", str(meeting_number)]
+            if password := payload.get("password"):
+                argv.extend(["--password", str(password)])
+            return argv
+        if operation == "vc.meeting.events":
+            meeting_id = payload.get("meeting_id")
+            if not meeting_id:
+                raise ToolExecutionError("meeting_id is required for vc.meeting.events")
+            argv = ["lark-cli", "vc", "+meeting-events", *common, "--meeting-id", str(meeting_id)]
+            if start := payload.get("start"):
+                argv.extend(["--start", str(start)])
+            if end := payload.get("end"):
+                argv.extend(["--end", str(end)])
+            if page_token := payload.get("page_token"):
+                argv.extend(["--page-token", str(page_token)])
+            if page_size := payload.get("page_size"):
+                argv.extend(["--page-size", str(page_size)])
+            if payload.get("page_all", True):
+                argv.append("--page-all")
+            return argv
+        if operation == "vc.meeting.leave":
+            meeting_id = payload.get("meeting_id")
+            if not meeting_id:
+                raise ToolExecutionError("meeting_id is required for vc.meeting.leave")
+            return ["lark-cli", "vc", "+meeting-leave", *common, "--meeting-id", str(meeting_id)]
         if operation == "minutes.search":
             argv = ["lark-cli", "minutes", "+search", *common]
             if query := payload.get("query"):
@@ -389,6 +450,36 @@ class OapiLarkProvider:
                 params={},
                 body={},
             )
+        if operation == "vc.meeting.join":
+            return OapiRequest(
+                method="POST",
+                path="/open-apis/vc/v1/bots/join",
+                params={},
+                body={
+                    "meeting_number": payload.get("meeting_number"),
+                    **({"password": payload["password"]} if payload.get("password") else {}),
+                },
+            )
+        if operation == "vc.meeting.events":
+            return OapiRequest(
+                method="GET",
+                path="/open-apis/vc/v1/bots/events",
+                params={
+                    "meeting_id": payload.get("meeting_id"),
+                    "start_time": payload.get("start"),
+                    "end_time": payload.get("end"),
+                    "page_token": payload.get("page_token"),
+                    "page_size": payload.get("page_size"),
+                },
+                body={},
+            )
+        if operation == "vc.meeting.leave":
+            return OapiRequest(
+                method="POST",
+                path="/open-apis/vc/v1/bots/leave",
+                params={},
+                body={"meeting_id": payload.get("meeting_id")},
+            )
         if operation == "minutes.search":
             return OapiRequest(
                 method="GET",
@@ -460,6 +551,7 @@ class LarkToolAdapter:
         "auth.status",
         "vc.search",
         "vc.notes",
+        "vc.meeting.events",
         "docs.fetch",
         "docs.search",
         "minutes.search",
