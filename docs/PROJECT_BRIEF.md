@@ -4,17 +4,17 @@
 
 Lark Meeting Agent
 
-中文名：飞书会议全流程智能体
+Chinese name: Feishu meeting workflow agent
 
 ## 2. One-line Description
 
-Lark Meeting Agent is a Feishu/Lark-native meeting workflow agent that turns meeting transcripts into structured minutes, decisions, action items, risks, and long-term project memory, then safely syncs approved outcomes to Lark docs, tasks, and IM messages.
+Lark Meeting Agent is a Feishu/Lark-native meeting workflow agent built as a HKUDS/nanobot v0.2.1 extension. It turns meeting transcripts into structured minutes, decisions, action items, risks, and long-term project memory, then safely syncs approved outcomes to Lark docs, tasks, and IM messages.
 
 ## 3. Product Positioning
 
 This product is not a generic chatbot and not a simple meeting summarizer.
 
-It is a workflow agent for enterprise collaboration. Its core value is to connect meeting understanding with collaboration execution and long-term memory.
+It is a meeting workflow agent for enterprise collaboration. Its core value is to connect meeting understanding with collaboration execution and long-term memory.
 
 The product helps users:
 
@@ -29,13 +29,13 @@ The product helps users:
 
 Primary users:
 
-1. Product managers
-2. Project managers
-3. Tech leads
-4. Customer success managers
-5. Sales engineers
-6. Engineering managers
-7. New team members joining an existing project
+1. product managers,
+2. project managers,
+3. tech leads,
+4. customer success managers,
+5. sales engineers,
+6. engineering managers,
+7. new team members joining an existing project.
 
 ## 5. Product Problems
 
@@ -112,49 +112,80 @@ MVP output:
 The MVP does not include:
 
 - custom ASR,
-- real-time meeting bot,
+- realtime meeting bot,
 - real Lark OAuth onboarding,
 - complex frontend dashboard,
 - arbitrary autonomous tool calling,
 - production-grade multi-tenant permission system,
-- vector database optimization.
+- vector database optimization,
+- standalone FastAPI service as the core runtime,
+- independent Feishu bot runtime,
+- independent generic memory runtime,
+- independent WebUI or model-routing runtime.
 
-## 9. Technical Principles
+## 9. Nanobot Pivot
 
-1. Deterministic workflow first, LLM second.
-2. All external Lark operations go through `LarkToolAdapter`.
-3. All LLM outputs are schema-validated.
-4. Every decision and action item must preserve evidence.
-5. Write operations require dry-run and approval.
-6. Tests must run without real Lark credentials.
-7. Meeting content is untrusted input.
-8. System behavior is specified through OpenSpec before code implementation.
+The project should be built from HKUDS/nanobot v0.2.1 rather than a standalone FastAPI app.
 
-## 10. Architecture Overview
+nanobot provides:
+
+- agent loop and message bus,
+- Feishu channel and other chat channels,
+- WebUI,
+- tools and tool discovery,
+- skills,
+- session and memory infrastructure,
+- MCP,
+- model/provider routing,
+- deployment support,
+- security and workspace policy.
+
+Lark Meeting Agent adds:
+
+- meeting-domain deterministic workflows,
+- `LarkToolAdapter`,
+- transcript normalization,
+- structured extraction,
+- evidence validation,
+- write-plan approval,
+- meeting structured memory,
+- fixture-based evaluation.
+
+## 10. Technical Principles
+
+1. Reuse nanobot infrastructure where it already exists.
+2. Deterministic workflow first, LLM second.
+3. All external Lark operations go through `LarkToolAdapter`.
+4. All LLM outputs are schema-validated.
+5. Every decision and action item must preserve evidence.
+6. Write operations require dry-run and approval.
+7. Tests must run without real Lark credentials or real LLM keys.
+8. Meeting content is untrusted input.
+9. System behavior is specified through OpenSpec before code implementation.
+
+## 11. Architecture Overview
 
 ```text
-User / Lark Bot / API
-  -> API Layer
-  -> Workflow Layer
-      -> PostMeetingWorkflow
-      -> PreBriefWorkflow
-      -> CrossMeetingQAWorkflow
-  -> Intelligence Layer
-      -> TranscriptNormalizer
-      -> MeetingAnalyzer
-      -> WritePlanBuilder
-      -> RetrievalService
-      -> MemoryService
-  -> Tool Layer
+Feishu / WebUI / CLI / other nanobot channels
+  -> nanobot MessageBus / AgentLoop / CommandRouter
+  -> Lark Meeting entrypoint
+      -> deterministic PostMeetingWorkflow
+          -> ResolveMeeting
+          -> FetchTranscript
+          -> NormalizeTranscript
+          -> AnalyzeMeeting
+          -> BuildWritePlan
+          -> RequestApproval
+          -> ExecuteApprovedWrites
+          -> PersistKnowledge
+          -> ReturnResult
+      -> Meeting Intelligence
       -> LarkToolAdapter
-      -> FakeLarkProvider
-      -> CliLarkProvider
-  -> Storage Layer
-      -> Local DB / Postgres later
-      -> Fixtures for tests
+      -> Meeting Memory
+  -> nanobot session/memory/provider/WebUI/deployment infrastructure
 ```
 
-## 11. Core Workflow: PostMeetingWorkflow
+## 12. Core Workflow: PostMeetingWorkflow
 
 ```text
 ResolveMeeting
@@ -168,7 +199,9 @@ ResolveMeeting
   -> ReturnResult
 ```
 
-## 12. Main Data Objects
+nanobot AgentLoop may route user messages into the meeting entrypoint, but the workflow itself remains deterministic and testable.
+
+## 13. Main Data Objects
 
 - Meeting
 - TranscriptSegment
@@ -180,59 +213,69 @@ ResolveMeeting
 - OpenQuestion
 - WritePlan
 - WriteOperation
+- MeetingKnowledgeRecord
 - MemoryCard
 - Run
 
-## 13. Development Roadmap
+## 14. Development Roadmap
 
-### Phase 1: Bootstrap
+### Phase 1: Documentation and OpenSpec Pivot
 
-- Python project skeleton
-- FastAPI health check
-- config and logging
-- core Pydantic schemas
-- tests, ruff, mypy
+- update product documents,
+- update OpenSpec artifacts,
+- add ADR for nanobot adoption,
+- validate with OpenSpec.
 
-### Phase 2: LarkToolAdapter
+### Phase 2: nanobot Extension-point Research
 
-- fake provider
-- CLI provider shell boundary
-- allowlist
-- dry-run
-- approval
-- audit logs
+- inspect AgentLoop,
+- inspect CommandRouter,
+- inspect Tool and ToolLoader,
+- inspect Feishu channel,
+- inspect skills,
+- inspect memory,
+- inspect security/workspace policy,
+- inspect Python SDK,
+- inspect OpenAI-compatible API,
+- inspect WebUI/gateway.
 
-### Phase 3: MeetingAnalyzer
+### Phase 3: Later Implementation Skeleton Inside nanobot Fork
 
-- transcript normalization
-- structured minutes
-- decisions/action items/risks/open questions
-- evidence validation
-- fake analyzer and LLM interface
+- add meeting domain module,
+- add controlled meeting tool or command,
+- add skill instructions,
+- add fixture directories.
 
-### Phase 4: PostMeetingWorkflow
+### Phase 4: Meeting Schema and Analyzer
 
-- explicit workflow state machine
-- process endpoint
-- approval endpoint
-- fake write execution
+- define schemas,
+- implement normalizer,
+- implement fake analyzer,
+- define optional LLM analyzer boundary,
+- enforce evidence validation.
 
-### Phase 5: Memory and QA
+### Phase 5: PostMeetingWorkflow
 
-- persistence
-- retrieval interface
-- source-grounded QA
+- implement deterministic state machine,
+- connect fake provider,
+- build write plan,
+- preserve run state.
 
-### Phase 6: Pre-brief
+### Phase 6: LarkToolAdapter Write-plan Approval
 
-- calendar agenda
-- meeting type classification
-- related history retrieval
-- unresolved action item retrieval
+- enforce allowlist,
+- enforce dry-run,
+- support approval,
+- record audit events.
 
-### Phase 7: Optional realtime
+### Phase 7: Memory, QA, and Evaluation
 
-- event schema
-- fake transcript deltas
-- rolling summary
-- current meeting state
+- persist structured meeting knowledge,
+- support source-grounded QA,
+- run fixture-based evaluations.
+
+### Future: Pre-brief and Realtime
+
+- pre-brief workflow,
+- realtime transcript/event deltas,
+- live meeting support.

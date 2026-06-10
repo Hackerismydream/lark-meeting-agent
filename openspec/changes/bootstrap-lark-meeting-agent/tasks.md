@@ -1,67 +1,96 @@
 # Tasks: Bootstrap Lark Meeting Agent
 
-## 1. Repository Context
+> Phase gate: do not implement nanobot meeting code until this nanobot pivot OpenSpec has been reviewed and approved.
 
-- [ ] 1.1 Create `AGENTS.md` with project development rules.
-- [ ] 1.2 Create `docs/PROJECT_BRIEF.md` with product positioning, MVP scope, architecture, and roadmap.
-- [ ] 1.3 Ensure README references OpenSpec workflow and development commands.
+## 1. Documentation and OpenSpec Pivot
 
-## 2. OpenSpec Baseline
+- [x] 1.1 Update `AGENTS.md` to adopt HKUDS/nanobot v0.2.1 as the target runtime.
+- [x] 1.2 Update `README.md` with OpenSpec bootstrap status and validation commands.
+- [x] 1.3 Update `docs/PROJECT_BRIEF.md` from standalone FastAPI app to nanobot-based meeting extension.
+- [x] 1.4 Add `docs/ADR-001-adopt-nanobot-v0.2.1.md`.
+- [x] 1.5 Update `docs/GPT_PRO_REVIEW_PROMPT.txt` for nanobot pivot review.
 
-- [ ] 2.1 Create product delta spec.
-- [ ] 2.2 Create lark-tools delta spec.
-- [ ] 2.3 Create meeting-intelligence delta spec.
-- [ ] 2.4 Create workflows delta spec.
-- [ ] 2.5 Create memory delta spec.
-- [ ] 2.6 Create safety delta spec.
-- [ ] 2.7 Create API delta spec.
-- [ ] 2.8 Create evaluation delta spec.
-- [ ] 2.9 Run OpenSpec validation for the change.
+## 2. OpenSpec Delta Pivot
 
-## 3. Python Project Bootstrap
+- [x] 2.1 Update product delta spec.
+- [x] 2.2 Update lark-tools delta spec.
+- [x] 2.3 Update meeting-intelligence delta spec.
+- [x] 2.4 Update workflows delta spec.
+- [x] 2.5 Update memory delta spec.
+- [x] 2.6 Update safety delta spec.
+- [x] 2.7 Reframe API spec as entrypoint contract.
+- [x] 2.8 Update evaluation delta spec.
 
-- [ ] 3.1 Create Python project structure under `app/`.
-- [ ] 3.2 Configure `pyproject.toml`.
-- [ ] 3.3 Add FastAPI dependency.
-- [ ] 3.4 Add Pydantic v2 dependency.
-- [ ] 3.5 Add pytest, ruff, and mypy.
-- [ ] 3.6 Create `app/main.py`.
-- [ ] 3.7 Implement `GET /health`.
+## 3. OpenSpec Validation
 
-## 4. Core Schemas
+- [x] 3.1 Run `openspec validate bootstrap-lark-meeting-agent`.
+- [x] 3.2 Check `git diff --stat`.
+- [x] 3.3 Confirm no application code was added.
+- [x] 3.4 Confirm no forbidden paths were created: `app/`, `tests/`, `pyproject.toml`, `nanobot/`, `webui/`, `Dockerfile`, migrations, real Lark integration code, or real LLM provider code.
 
-- [ ] 4.1 Add `Meeting` schema.
-- [ ] 4.2 Add `TranscriptSegment` schema.
-- [ ] 4.3 Add `EvidenceRef` schema.
-- [ ] 4.4 Add `MeetingMinutes` schema.
-- [ ] 4.5 Add `Decision` schema.
-- [ ] 4.6 Add `ActionItem` schema.
-- [ ] 4.7 Add `Risk` schema.
-- [ ] 4.8 Add `OpenQuestion` schema.
-- [ ] 4.9 Add `WritePlan` schema.
-- [ ] 4.10 Add `WriteOperation` schema.
-- [ ] 4.11 Add `Run` schema.
+## 4. nanobot Extension-point Research
 
-## 5. Core Infrastructure
+- [ ] 4.1 Inspect nanobot v0.2.1 AgentLoop.
+- [ ] 4.2 Inspect nanobot v0.2.1 CommandRouter.
+- [ ] 4.3 Inspect nanobot v0.2.1 Tool and ToolLoader.
+- [ ] 4.4 Inspect nanobot v0.2.1 Feishu channel.
+- [ ] 4.5 Inspect nanobot v0.2.1 skills.
+- [ ] 4.6 Inspect nanobot v0.2.1 memory/session model.
+- [ ] 4.7 Inspect nanobot v0.2.1 security/workspace settings.
+- [ ] 4.8 Inspect nanobot v0.2.1 Python SDK and OpenAI-compatible API.
+- [ ] 4.9 Inspect nanobot v0.2.1 WebUI/gateway.
+- [ ] 4.10 Update OpenSpec if research changes the preferred extension point.
 
-- [ ] 5.1 Add configuration loader.
-- [ ] 5.2 Add structured logging.
-- [ ] 5.3 Add base error classes.
-- [ ] 5.4 Add test fixtures directory.
-- [ ] 5.5 Add sample transcript fixture.
-- [ ] 5.6 Add fake Lark output fixture placeholders.
+## 5. Later Implementation Skeleton Inside nanobot Fork
 
-## 6. Tests
+- [ ] 5.1 Fork or source-checkout HKUDS/nanobot v0.2.1.
+- [ ] 5.2 Carry the reviewed OpenSpec/docs/ADR into the nanobot-based worktree.
+- [ ] 5.3 Add meeting-domain module shape under `nanobot/meeting/`.
+- [ ] 5.4 Add controlled tool or command entrypoint.
+- [ ] 5.5 Add `nanobot/skills/lark-meeting/SKILL.md`.
+- [ ] 5.6 Add `tests/meeting/` and `tests/fixtures/meeting/`.
 
-- [ ] 6.1 Add `/health` test.
-- [ ] 6.2 Add schema validation tests.
-- [ ] 6.3 Add evidence-required validation tests.
-- [ ] 6.4 Add write operation approval schema tests.
-- [ ] 6.5 Ensure tests run without real Lark credentials.
+## 6. Later Meeting Schema and Analyzer
 
-## 7. Validation
+- [ ] 6.1 Add meeting schemas.
+- [ ] 6.2 Add transcript normalization.
+- [ ] 6.3 Add fake analyzer.
+- [ ] 6.4 Add optional LLM analyzer boundary.
+- [ ] 6.5 Add evidence validation.
+- [ ] 6.6 Add malformed transcript tests.
+- [ ] 6.7 Add analyzer output without evidence tests.
 
-- [ ] 7.1 Run `ruff check .`.
-- [ ] 7.2 Run `mypy app`.
-- [ ] 7.3 Run `pytest`.
-- [ ] 7.4 Document any bootstrap limitations.
+## 7. Later Fake Provider and Deterministic Workflow
+
+- [ ] 7.1 Add fake Lark provider.
+- [ ] 7.2 Add deterministic PostMeetingWorkflow.
+- [ ] 7.3 Add successful post-meeting dry-run flow.
+- [ ] 7.4 Add missing transcript handling.
+- [ ] 7.5 Add user rejects writes flow.
+- [ ] 7.6 Add selected write operations approved flow.
+
+## 8. Later LarkToolAdapter Write-plan Approval
+
+- [ ] 8.1 Add LarkToolAdapter allowlist.
+- [ ] 8.2 Block direct `lark-cli` through nanobot exec.
+- [ ] 8.3 Add dry-run WritePlan generation.
+- [ ] 8.4 Add approval-gated write execution.
+- [ ] 8.5 Add malformed tool output handling.
+- [ ] 8.6 Add tool-call audit events.
+
+## 9. Later Fixture-based Evaluation
+
+- [ ] 9.1 Add transcript fixtures.
+- [ ] 9.2 Add expected extraction fixtures.
+- [ ] 9.3 Add fake analyzer evaluation.
+- [ ] 9.4 Add evidence coverage metric.
+- [ ] 9.5 Add source-grounded QA tests.
+
+## Rejected Old Plan
+
+- [ ] Do not create a standalone `app/` directory as the MVP core.
+- [ ] Do not add FastAPI as the MVP core framework.
+- [ ] Do not add SQLAlchemy/PostgreSQL as bootstrap requirements.
+- [ ] Do not implement `GET /health` as the first product milestone.
+- [ ] Do not treat `/api/meetings/process` as the MVP primary entrypoint.
+- [ ] Do not run `mypy app` unless a later nanobot-compatible type-checking plan requires it.

@@ -6,7 +6,9 @@
 
 All Lark-related operations MUST go through `LarkToolAdapter`.
 
-Agents, workflows, analyzers, and API handlers MUST NOT call `subprocess`, `lark-cli`, Lark HTTP APIs, or Lark SDKs directly.
+nanobot tools, commands, skills, workflows, analyzers, and channel handlers MUST NOT call `subprocess`, `lark-cli`, Lark HTTP APIs, or Lark SDKs directly.
+
+nanobot's general exec/shell tool MUST NOT be used for Lark operations.
 
 #### Scenario: Workflow needs transcript
 
@@ -14,6 +16,13 @@ Agents, workflows, analyzers, and API handlers MUST NOT call `subprocess`, `lark
 - WHEN it interacts with Lark-related data
 - THEN it calls `LarkToolAdapter`
 - AND does not call `lark-cli` directly.
+
+#### Scenario: Direct lark-cli via nanobot exec blocked
+
+- GIVEN a model or user asks nanobot's exec tool to run `lark-cli`
+- WHEN the command is related to Lark operations
+- THEN the command is blocked by policy
+- AND the workflow is told to use `LarkToolAdapter`.
 
 ### Requirement: Provider Modes
 
@@ -23,6 +32,8 @@ The adapter MUST support at least two provider modes:
 2. `cli`
 
 The fake provider MUST be the default mode for tests.
+
+The CLI provider is later scope and MUST be allowlisted, audited, timeout-controlled, secret-redacted, and approval-gated.
 
 #### Scenario: Tests without credentials
 

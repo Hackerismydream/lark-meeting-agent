@@ -2,11 +2,13 @@
 
 ## Why
 
-Build the initial specification and project foundation for Lark Meeting Agent.
+Build the initial specification and project foundation for Lark Meeting Agent, now pivoted to a HKUDS/nanobot v0.2.1 based architecture.
 
 Lark Meeting Agent is a Feishu/Lark-native meeting workflow agent. Its long-term product goal is to support meeting preparation, meeting understanding, post-meeting execution, and cross-meeting memory.
 
-The first implementation should focus on a narrow but complete post-meeting vertical slice. The goal is to avoid building a vague chatbot or a large unfinished SaaS. The MVP should demonstrate Agent engineering capability through deterministic workflows, safe tool execution, structured outputs, evidence preservation, and testability.
+nanobot already provides a Python 3.11+ agent runtime with chat channels, Feishu channel, tools, memory, MCP, model routing, WebUI, deployment, and security/workspace controls. The project should not rebuild those capabilities as a standalone FastAPI application.
+
+The first implementation should focus on a narrow but complete post-meeting vertical slice inside a nanobot fork/source checkout. The current change does not implement code; it aligns product contracts and OpenSpec with the nanobot pivot.
 
 ## Problem
 
@@ -18,7 +20,7 @@ Most meeting AI tools stop at transcription and summarization. In real enterpris
 4. long-running projects lose the reasoning behind past decisions,
 5. AI agents can create risk if they write to collaboration systems without approval.
 
-This project should address these problems through workflow design, tool boundaries, and evidence-linked meeting intelligence.
+This project should address these problems through deterministic workflow design, controlled nanobot tool/command entrypoints, LarkToolAdapter boundaries, and evidence-linked meeting intelligence.
 
 ## Scope
 
@@ -34,21 +36,28 @@ The MVP scope includes:
 6. evidence references for decisions and action items,
 7. Lark write plan contract for docs/tasks/IM,
 8. dry-run and approval requirement for writes,
-9. local knowledge persistence contract,
-10. source-grounded cross-meeting QA contract.
+9. local structured meeting knowledge persistence contract,
+10. source-grounded cross-meeting QA contract,
+11. nanobot-based entrypoint and extension-point research contract.
 
 ## Non-goals
 
 This change does not implement:
 
-1. custom ASR,
-2. real-time meeting bot,
-3. production Lark OAuth onboarding,
-4. complex frontend dashboard,
-5. arbitrary autonomous tool calling,
-6. production-grade multi-tenant security,
-7. vector database optimization,
-8. real Lark credentials in tests.
+1. application code,
+2. nanobot source code,
+3. custom ASR,
+4. realtime meeting bot,
+5. production Lark OAuth onboarding,
+6. complex frontend dashboard,
+7. arbitrary autonomous tool calling,
+8. production-grade multi-tenant security,
+9. vector database optimization,
+10. real Lark credentials in tests,
+11. standalone FastAPI service as the MVP core,
+12. independent Feishu bot runtime,
+13. independent generic memory runtime,
+14. independent WebUI or model-routing runtime.
 
 ## Approach
 
@@ -56,23 +65,29 @@ Use OpenSpec to define system behavior before code.
 
 The implementation should be split into later changes:
 
-1. bootstrap project skeleton,
-2. implement LarkToolAdapter,
-3. implement MeetingAnalyzer,
-4. implement PostMeetingWorkflow,
-5. implement write plan rendering,
-6. implement memory and QA,
-7. implement pre-brief workflow,
-8. optionally implement realtime meeting ingestion.
+1. perform nanobot extension-point research,
+2. update or confirm the OpenSpec after research,
+3. create a minimal meeting-domain skeleton inside a nanobot fork/source checkout,
+4. implement LarkToolAdapter,
+5. implement transcript normalization and MeetingAnalyzer,
+6. implement deterministic PostMeetingWorkflow,
+7. implement write plan rendering and approval,
+8. implement structured meeting memory and QA,
+9. implement fixture-based evaluation,
+10. later implement pre-brief workflow,
+11. optionally implement realtime meeting ingestion.
 
 ## Success Criteria
 
 This change is successful when:
 
-1. AGENTS.md defines repository development rules,
-2. docs/PROJECT_BRIEF.md defines product and architecture,
-3. OpenSpec delta specs define product, tools, intelligence, workflows, memory, safety, API, and evaluation requirements,
-4. tasks.md defines an actionable implementation checklist,
-5. the MVP is clearly constrained to post-meeting processing,
-6. tests and fake providers are required by specification,
-7. all risky Lark writes are approval-gated by specification.
+1. AGENTS.md defines nanobot-based repository development rules,
+2. docs/PROJECT_BRIEF.md defines product and nanobot-based architecture,
+3. docs/ADR-001-adopt-nanobot-v0.2.1.md records the architecture decision,
+4. OpenSpec delta specs define product, tools, intelligence, workflows, memory, safety, entrypoints, and evaluation requirements,
+5. tasks.md defines an actionable nanobot-pivot implementation checklist,
+6. the MVP is clearly constrained to post-meeting processing,
+7. tests and fake providers are required by specification,
+8. all risky Lark writes are approval-gated by specification,
+9. OpenSpec validation passes,
+10. no application code is added.

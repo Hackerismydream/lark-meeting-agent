@@ -2,48 +2,75 @@
 
 ## 1. Design Summary
 
-Lark Meeting Agent will be implemented as a deterministic workflow system with typed tool boundaries and schema-validated intelligence outputs.
+Lark Meeting Agent will be implemented as a deterministic meeting-domain extension inside a HKUDS/nanobot v0.2.1 fork/source checkout.
 
-The MVP should not depend on real Lark credentials or real LLM calls. It should support fake providers and fixture-based tests so that the core workflow can be verified in CI.
+The MVP should not depend on real Lark credentials or real LLM calls. It should support fake providers, fake analyzers, and fixture-based tests so the core meeting workflow can be verified in CI without Feishu, nanobot gateway, or external model access.
+
+This change is documentation and OpenSpec only. It does not create application code.
 
 ## 2. System Architecture
 
 ```text
-Client / Lark Bot / API
-  -> FastAPI API Layer
-  -> Workflow Layer
-      -> PostMeetingWorkflow
-      -> later: PreBriefWorkflow
-      -> later: CrossMeetingQAWorkflow
-  -> Meeting Intelligence Layer
-      -> TranscriptNormalizer
-      -> MeetingAnalyzer
-      -> EvidenceValidator
-      -> WritePlanBuilder
-  -> Tool Layer
+Feishu / WebUI / CLI / other nanobot channels
+  -> nanobot MessageBus / AgentLoop / CommandRouter
+  -> Lark Meeting entrypoint
+      -> deterministic PostMeetingWorkflow
+          -> ResolveMeeting
+          -> FetchTranscript
+          -> NormalizeTranscript
+          -> AnalyzeMeeting
+          -> BuildWritePlan
+          -> RequestApproval
+          -> ExecuteApprovedWrites
+          -> PersistKnowledge
+          -> ReturnResult
+      -> Meeting Intelligence
       -> LarkToolAdapter
-      -> FakeLarkProvider
-      -> CliLarkProvider
-      -> SubprocessRunner
-  -> Storage Layer
-      -> MeetingRepository
-      -> TranscriptRepository
-      -> KnowledgeRepository
-      -> later: Postgres/pgvector
+      -> Meeting Memory
+  -> nanobot session/memory/provider/WebUI/deployment infrastructure
 ```
 
-## 3. Key Design Decisions
+## 3. Future Code Shape
 
-### Decision 1: Deterministic workflow instead of generic agent loop
+Do not create these files in this change. This is the intended later shape:
 
-The MVP should not use a free-form autonomous agent loop.
+```text
+nanobot/meeting/
+  schemas.py
+  workflow.py
+  analyzer.py
+  normalizer.py
+  lark_adapter.py
+  write_plan.py
+  memory.py
+  renderers.py
+  evals.py
+
+nanobot/agent/tools/lark_meeting.py
+  # Thin tool wrapper around deterministic meeting workflows.
+
+nanobot/skills/lark-meeting/SKILL.md
+  # Agent-facing instructions for when and how to use meeting tools.
+
+tests/meeting/
+tests/fixtures/meeting/
+```
+
+## 4. Key Design Decisions
+
+### Decision 1: Adopt nanobot v0.2.1 instead of standalone FastAPI
+
+The MVP should not start from a new FastAPI app.
 
 Reason:
 
-- Meeting processing has a clear lifecycle.
-- Safety requirements are strict.
-- Lark write operations must be controlled.
-- Deterministic nodes make testing easier.
+- nanobot already provides the agent runtime, Feishu channel, tools, memory, WebUI, model routing, MCP, deployment, and security/workspace controls.
+- The meeting product value is in domain workflows, evidence, approval, and Lark-safe tool boundaries.
+- Rebuilding the base runtime would expand scope before the meeting vertical slice works.
+
+### Decision 2: Deterministic workflow instead of a second generic agent loop
+
+nanobot AgentLoop may route user messages into the meeting entrypoint, but PostMeetingWorkflow remains deterministic.
 
 PostMeetingWorkflow nodes:
 
@@ -59,20 +86,28 @@ PersistKnowledge
 ReturnResult
 ```
 
-### Decision 2: LarkToolAdapter as the only external Lark boundary
+Reason:
+
+- Meeting processing has a clear lifecycle.
+- Safety requirements are strict.
+- Lark write operations must be controlled.
+- Deterministic nodes make testing easier.
+
+### Decision 3: LarkToolAdapter as the only external Lark boundary
 
 All Lark operations must go through LarkToolAdapter.
 
 Reason:
 
 - Prevent arbitrary shell execution.
+- Prevent nanobot's general exec tool from bypassing approval.
 - Enforce operation allowlist.
 - Separate read and write operations.
 - Support fake provider in tests.
 - Record audit logs.
 - Enforce dry-run and approval.
 
-### Decision 3: Evidence-first meeting intelligence
+### Decision 4: Evidence-first meeting intelligence
 
 The analyzer must preserve evidence references for decisions and action items.
 
@@ -83,9 +118,9 @@ Reason:
 - Support cross-meeting QA with sources.
 - Improve user trust.
 
-### Decision 4: Fake provider first
+### Decision 5: Fake provider and fake analyzer first
 
-The initial implementation should run without Lark credentials.
+The initial implementation should run without Lark credentials and without real LLM API keys.
 
 Reason:
 
@@ -93,8 +128,9 @@ Reason:
 - Recruiting demo must be reproducible.
 - Real Lark permissions may vary.
 - Tool behavior should be testable with fixtures.
+- Analyzer contracts should be testable before model selection.
 
-### Decision 5: Write plan before write execution
+### Decision 6: Write plan before write execution
 
 The workflow should generate WritePlan first. Execution only happens after approval.
 
@@ -104,7 +140,44 @@ Reason:
 - Users must preview and approve side effects.
 - The same plan can be tested without executing writes.
 
-## 4. Data Model Sketch
+## 5. nanobot Extension-point Research Required Before Implementation
+
+Before implementing runtime code, Codex must inspect nanobot v0.2.1 extension points:
+
+- AgentLoop
+- CommandRouter
+- Tool and ToolLoader
+- Feishu channel
+- skills
+- memory
+- security/workspace settings
+- Python SDK
+- OpenAI-compatible API
+- WebUI/gateway
+
+The implementation plan must be updated if the researched extension points indicate a better integration surface.
+
+## 6. Entrypoint Design
+
+Preferred conceptual entrypoints:
+
+```text
+/meeting process
+/meeting approve
+/meeting qa
+```
+
+Equivalent tool action contract is acceptable if command registration is not selected after research:
+
+```text
+lark_meeting(action="process")
+lark_meeting(action="approve")
+lark_meeting(action="qa")
+```
+
+Standalone REST/OpenAI-compatible API integration is future scope, not the MVP primary entrypoint.
+
+## 7. Data Model Sketch
 
 ### Meeting
 
@@ -199,54 +272,49 @@ Fields:
 - approval_status
 - execution_status
 
-## 5. Provider Modes
+## 8. Provider Modes
 
 ### Fake Provider
 
 Used in tests and local demos.
 
-Reads fixture files from:
+Future fixture roots:
 
 ```text
-tests/fixtures/lark_cli_outputs/
-tests/fixtures/transcripts/
+tests/fixtures/meeting/transcripts/
+tests/fixtures/meeting/lark_outputs/
+tests/fixtures/meeting/expected/
 ```
 
 ### CLI Provider
 
-Later implementation.
+Later implementation only.
 
-Executes allowlisted lark-cli commands through SubprocessRunner.
+If a CLI provider uses `lark-cli`, it executes allowlisted commands only through LarkToolAdapter.
 
 Rules:
 
 - never expose raw shell to workflows,
+- never invoke `lark-cli` through nanobot's general exec tool,
 - require structured JSON output,
 - set timeout,
 - redact secrets,
-- record audit event.
+- record audit event,
+- require dry-run and approval for writes.
 
-## 6. API Design
+## 9. Safety Settings
 
-MVP endpoints:
+Production-like meeting-agent configs should:
 
-```text
-GET /health
-POST /api/meetings/process
-POST /api/runs/{run_id}/approve
-GET /api/runs/{run_id}
-POST /api/qa
-```
+- set `tools.exec.enable=false` unless shell execution is explicitly needed for development,
+- set `tools.restrictToWorkspace=true`,
+- use sandbox settings where available,
+- restrict Feishu users through `allowFrom`,
+- restrict group behavior through group policy.
 
-The process endpoint should return:
+If exec is enabled, Lark-related shell commands must still be blocked by policy and cannot bypass LarkToolAdapter.
 
-- run_id,
-- status,
-- minutes,
-- write_plan,
-- errors.
-
-## 7. Error Model
+## 10. Error Model
 
 Core errors:
 
@@ -259,10 +327,11 @@ Core errors:
 - ToolOperationNotAllowedError
 - ToolExecutionError
 - PersistenceError
+- UnauthorizedMeetingWorkflowError
 
 Errors must be explicit and testable.
 
-## 8. Testing Strategy
+## 11. Testing Strategy
 
 ### Unit tests
 
@@ -272,13 +341,16 @@ Errors must be explicit and testable.
 - write plan rendering
 - safety checks
 - tool allowlist
+- command/tool entrypoint validation
 
 ### Integration tests
 
 - fake provider meeting processing
+- fake analyzer mode
 - dry-run write plan
 - approval flow
 - rejected writes
+- selected approved writes
 - cross-meeting QA with sources
 
 ### Evaluation fixtures
@@ -288,14 +360,20 @@ Errors must be explicit and testable.
 - expected action items
 - expected evidence references
 
-## 9. Future Extensions
+CI tests must not require:
+
+- real Lark credentials,
+- real LLM API keys,
+- Feishu channel connectivity,
+- nanobot gateway.
+
+## 12. Future Extensions
 
 Later changes may add:
 
 1. pre-brief workflow,
 2. real lark-cli provider,
-3. database migrations,
+3. storage backend changes if needed after nanobot research,
 4. vector retrieval,
 5. realtime meeting event ingestion,
-6. Lark bot interaction,
-7. web dashboard.
+6. richer Lark bot interaction.

@@ -4,9 +4,11 @@
 
 ### Requirement: Explicit Workflow State Machine
 
-The system MUST implement workflows as explicit state machines.
+The system MUST implement meeting workflows as explicit deterministic state machines inside the nanobot meeting domain module.
 
 Each workflow MUST define input schema, state schema, ordered nodes, terminal states, error states, and emitted events.
+
+nanobot AgentLoop MAY route user messages to meeting entrypoints, but MUST NOT replace PostMeetingWorkflow with a free-form autonomous loop.
 
 #### Scenario: Workflow inspection
 
@@ -45,6 +47,20 @@ It MUST execute the following nodes:
 - WHEN the workflow reaches FetchTranscript
 - THEN the workflow fails with `TranscriptNotFoundError`
 - AND does not generate unsupported meeting content.
+
+#### Scenario: Malformed transcript
+
+- GIVEN a meeting transcript cannot be normalized
+- WHEN the workflow reaches NormalizeTranscript
+- THEN the workflow fails with `TranscriptNormalizationError`
+- AND no write plan is generated.
+
+#### Scenario: Analyzer output without evidence
+
+- GIVEN analyzer output lacks evidence for decisions or action items
+- WHEN the workflow validates analysis output
+- THEN unsupported items are rejected or marked incomplete
+- AND they are not used for confirmed writes.
 
 #### Scenario: User rejects writes
 
