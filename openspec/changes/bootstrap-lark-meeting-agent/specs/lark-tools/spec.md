@@ -48,13 +48,15 @@ The adapter MUST maintain an allowlist of supported operations.
 
 MVP allowlist:
 
-1. `calendar.agenda`
+1. `auth.status`
 2. `vc.search`
 3. `vc.notes`
-4. `minutes.search`
-5. `docs.create`
-6. `task.create`
-7. `im.send`
+4. `docs.fetch`
+5. `minutes.search`
+6. `calendar.agenda`
+7. `docs.create`
+8. `task.create`
+9. `im.send`
 
 Any operation not in the allowlist MUST be rejected.
 

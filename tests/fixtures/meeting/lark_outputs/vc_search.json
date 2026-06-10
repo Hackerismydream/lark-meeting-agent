@@ -1,0 +1,11 @@
+{
+  "meetings": [
+    {
+      "meeting_id": "meeting-1",
+      "title": "项目例会",
+      "start_time": "2026-06-09T10:00:00+08:00",
+      "end_time": "2026-06-09T10:30:00+08:00",
+      "minute_token": "minute-token-1"
+    }
+  ]
+}
