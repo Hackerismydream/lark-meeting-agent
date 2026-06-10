@@ -88,9 +88,11 @@ class CliLarkProvider:
         self,
         runner: Callable[[list[str], int], CommandResult] | None = None,
         timeout_s: int = 60,
+        identity: str = "user",
     ) -> None:
         self.runner = runner or SubprocessRunner()
         self.timeout_s = timeout_s
+        self.identity = identity
 
     def call(self, operation: str, payload: dict[str, Any], *, dry_run: bool = False) -> dict[str, Any]:
         argv = self._argv(operation, payload, dry_run=dry_run)
@@ -106,11 +108,11 @@ class CliLarkProvider:
         return parsed
 
     def _argv(self, operation: str, payload: dict[str, Any], *, dry_run: bool) -> list[str]:
-        common = ["--format", "json"]
+        common = ["--format", "json", "--as", self.identity]
         if dry_run:
             common.append("--dry-run")
         if operation == "auth.status":
-            return ["lark-cli", "auth", "status", *common]
+            return ["lark-cli", "auth", "status"]
         if operation == "vc.search":
             argv = ["lark-cli", "vc", "+search", *common]
             if query := payload.get("query"):

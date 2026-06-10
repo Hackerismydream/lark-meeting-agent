@@ -75,4 +75,6 @@ def test_cli_provider_builds_argument_lists_not_shell_strings() -> None:
 
     assert seen
     assert seen[0][:3] == ["lark-cli", "vc", "+search"]
+    assert "--as" in seen[0]
+    assert "user" in seen[0]
     assert all(isinstance(part, str) for part in seen[0])
