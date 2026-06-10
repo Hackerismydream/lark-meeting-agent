@@ -8,7 +8,7 @@ Chinese name: Feishu meeting workflow agent
 
 ## 2. One-line Description
 
-Lark Meeting Agent is a Feishu/Lark-native meeting workflow agent built as a HKUDS/nanobot v0.2.1 extension. It turns meeting transcripts into structured minutes, decisions, action items, risks, and long-term project memory, then safely syncs approved outcomes to Lark docs, tasks, and IM messages.
+Lark Meeting Agent is a Feishu/Lark-native lifecycle local MVP. It turns meeting transcripts and supplied meeting events into structured minutes, decisions, action items, risks, sourced briefs, and local meeting memory, then safely syncs approved outcomes to Lark docs, tasks, and IM messages.
 
 ## 3. Product Positioning
 
@@ -88,16 +88,16 @@ Long-term
 
 ## 7. Current Lifecycle Implementation
 
-The current repository implements the lifecycle shape around the original post-meeting MVP.
+The current repository implements the lifecycle local MVP shape around the original post-meeting MVP. Post-meeting is the most complete closed-loop slice.
 
 Implemented now:
 
-- pre-meeting brief generation from agenda, related docs/tasks, historical meeting memory, and entity memory,
-- live transcript/event ingestion with rolling summary, decision/action/risk/question candidates, and source-grounded live QA,
+- pre-meeting brief generation from agenda, related docs/tasks, historical meeting memory, entity memory, retrieval, and templates,
+- live supplied transcript/event ingestion with rolling summary, decision/action/risk/question candidates, and source-grounded live QA,
 - post-meeting transcript processing, structured minutes, evidence-linked decisions/action items, risks, open questions, write plans, and approval-gated writes,
 - layered JSONL memory for meetings, transcript segments, minutes, decisions, action items, risks, open questions, entity memories, traces, and retrieval metadata,
 - cross-meeting retrieval and QA with structured/keyword search plus an optional semantic retrieval interface,
-- 31-case lifecycle benchmark with action/decision precision and recall, evidence coverage, schema success, safety, and QA source metrics.
+- 31-case deterministic fixture regression benchmark with action/decision precision and recall, evidence coverage, schema success, safety, and QA source metrics.
 
 Not implemented in this change:
 
@@ -107,9 +107,11 @@ Not implemented in this change:
 - production OAuth onboarding,
 - mandatory PostgreSQL/vector database service.
 
+The lifecycle local MVP does not claim production meeting bot deployment, realtime ASR, or production Lark OAuth onboarding.
+
 ## 8. MVP
 
-The MVP only implements the post-meeting workflow.
+The original MVP only implemented the post-meeting workflow. The current implementation has moved beyond that into a lifecycle local MVP, while post-meeting remains the most complete closed-loop workflow.
 
 MVP input:
 
@@ -253,65 +255,44 @@ nanobot AgentLoop may route user messages into the meeting entrypoint, but the w
 - RunTrace
 - EvaluationReport
 
-## 15. Development Roadmap
+## 15. Delivery Phases
 
-### Phase 1: Documentation and OpenSpec Pivot
+### Completed: Post-meeting MVP
 
-- update product documents,
-- update OpenSpec artifacts,
-- add ADR for nanobot adoption,
-- validate with OpenSpec.
+- meeting domain module,
+- controlled `lark_meeting` tool,
+- `lark-meeting` skill instructions,
+- transcript normalization,
+- fake and LLM analyzer boundaries,
+- evidence-linked minutes,
+- write plan generation,
+- approval-gated docs/tasks/IM writes,
+- local JSONL meeting memory,
+- source-grounded QA.
 
-### Phase 2: nanobot Extension-point Research
+### Completed: Lifecycle Local MVP
 
-- inspect AgentLoop,
-- inspect CommandRouter,
-- inspect Tool and ToolLoader,
-- inspect Feishu channel,
-- inspect skills,
-- inspect memory,
-- inspect security/workspace policy,
-- inspect Python SDK,
-- inspect OpenAI-compatible API,
-- inspect WebUI/gateway.
+- `PreBriefWorkflow` for read-only agenda/docs/tasks/memory context and templates,
+- `LiveMeetingWorkflow` for supplied transcript/event deltas,
+- `MemoryWorkflow` for layered records and entity memory,
+- retrieval engine with structured filters and keyword scoring,
+- run trace persistence and redaction,
+- 31-case deterministic fixture regression benchmark.
 
-### Phase 3: Later Implementation Skeleton Inside nanobot Fork
+### Current Hardening
 
-- add meeting domain module,
-- add controlled meeting tool or command,
-- add skill instructions,
-- add fixture directories.
+- evidence integrity validation against transcript segments,
+- provider-bound approval,
+- write operation idempotency,
+- Lark CLI verification matrix,
+- optional LLM extraction benchmark contract,
+- documentation truthfulness.
 
-### Phase 4: Meeting Schema and Analyzer
+### Future Enhancements
 
-- define schemas,
-- implement normalizer,
-- implement fake analyzer,
-- define optional LLM analyzer boundary,
-- enforce evidence validation.
-
-### Phase 5: PostMeetingWorkflow
-
-- implement deterministic state machine,
-- connect fake provider,
-- build write plan,
-- preserve run state.
-
-### Phase 6: LarkToolAdapter Write-plan Approval
-
-- enforce allowlist,
-- enforce dry-run,
-- support approval,
-- record audit events.
-
-### Phase 7: Memory, QA, and Evaluation
-
-- persist structured meeting knowledge,
-- support source-grounded QA,
-- run fixture-based evaluations.
-
-### Future: Pre-brief and Realtime
-
-- pre-brief workflow,
-- realtime transcript/event deltas,
-- live meeting support.
+- real readable Lark minutes/transcript gate once the authorized account has accessible data,
+- LLM synthesis for pre-briefs,
+- stronger live candidate consolidation,
+- customer memory maturation,
+- optional PostgreSQL/vector backend,
+- production OAuth and deployment controls.

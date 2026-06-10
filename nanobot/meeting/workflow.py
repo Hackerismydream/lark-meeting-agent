@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from nanobot.meeting.analyzer import create_analyzer
-from nanobot.meeting.errors import MeetingNotFoundError, TranscriptNotFoundError
+from nanobot.meeting.evidence import EvidenceIntegrityValidator
+from nanobot.meeting.errors import ApprovalProviderMismatchError, MeetingNotFoundError, TranscriptNotFoundError
 from nanobot.meeting.lark_adapter import LarkToolAdapter
 from nanobot.meeting.memory import MeetingMemoryStore
 from nanobot.meeting.memory_workflow import MemoryWorkflow
@@ -49,6 +51,8 @@ class PostMeetingWorkflow:
                 send_message=request.send_message,
                 chat_id=request.chat_id,
                 dry_run=request.dry_run,
+                provider_mode=request.provider_mode,
+                analyzer_mode=request.analyzer_mode,
             )
         if request.meeting_ref.type == MeetingRefType.LATEST_ENDED:
             return self.process_latest_ended(request)
@@ -63,12 +67,24 @@ class PostMeetingWorkflow:
         send_message: bool = False,
         chat_id: str | None = None,
         dry_run: bool = True,
+        provider_mode: str | ProviderMode | None = None,
+        analyzer_mode: str | None = None,
     ) -> ProcessMeetingResult:
         path = Path(transcript_file)
         if not path.exists():
             raise TranscriptNotFoundError(str(path))
         meeting = Meeting(meeting_id=f"fixture-{path.stem}", title=path.stem, source="transcript_file")
-        return self._run(meeting, path.read_text(), create_doc, create_tasks, send_message, chat_id, dry_run)
+        return self._run(
+            meeting,
+            path.read_text(),
+            create_doc,
+            create_tasks,
+            send_message,
+            chat_id,
+            dry_run,
+            provider_mode=provider_mode or self.provider_mode,
+            analyzer_mode=analyzer_mode or self.analyzer_mode,
+        )
 
     def process_latest_ended(self, request: ProcessMeetingInput) -> ProcessMeetingResult:
         adapter = self._adapter(request.provider_mode)
@@ -98,6 +114,8 @@ class PostMeetingWorkflow:
                         request.send_message,
                         request.chat_id,
                         request.dry_run,
+                        provider_mode=request.provider_mode,
+                        analyzer_mode=request.analyzer_mode,
                     )
             raise MeetingNotFoundError("no ended meeting found")
         last_error: str | None = None
@@ -129,16 +147,34 @@ class PostMeetingWorkflow:
                 request.send_message,
                 request.chat_id,
                 request.dry_run,
+                provider_mode=request.provider_mode,
+                analyzer_mode=request.analyzer_mode,
             )
         raise TranscriptNotFoundError(last_error or "meeting has no transcript content")
 
-    def approve(self, run_id: str, operation_ids: list[str]):
+    def approve(
+        self,
+        run_id: str,
+        operation_ids: list[str],
+        *,
+        provider_mode: str | ProviderMode | None = None,
+        override_provider_mode: bool = False,
+    ):
         run = self.memory.load_run_snapshot(run_id)
         if not run.write_plan:
             raise TranscriptNotFoundError("run has no write plan")
-        adapter = self._adapter(self.provider_mode)
+        stored_provider = ProviderMode(run.provider_mode)
+        requested_provider = ProviderMode(provider_mode) if provider_mode else stored_provider
+        if requested_provider != stored_provider and not override_provider_mode:
+            raise ApprovalProviderMismatchError(
+                f"run {run_id} was created with provider_mode={stored_provider.value}; "
+                f"approval requested provider_mode={requested_provider.value}"
+            )
+        adapter = self._adapter(requested_provider)
         selected = set(operation_ids)
         for operation in run.write_plan.operations:
+            if operation.execution_status == ExecutionStatus.COMPLETED:
+                continue
             if operation.operation_id not in selected:
                 operation.execution_status = ExecutionStatus.SKIPPED
                 operation.approval_status = ApprovalStatus.REJECTED
@@ -161,6 +197,8 @@ class PostMeetingWorkflow:
                 operation.error = str(exc)
                 operation.execution_status = ExecutionStatus.FAILED
         run.status = RunStatus.COMPLETED
+        run.approved_at = datetime.now(timezone.utc).isoformat()
+        run.updated_at = run.approved_at
         self.memory.save_run_snapshot(run)
         self.memory.persist_audit(adapter.audit_events)
         return ProcessMeetingResult(
@@ -180,10 +218,14 @@ class PostMeetingWorkflow:
         send_message: bool,
         chat_id: str | None,
         dry_run: bool,
+        provider_mode: str | ProviderMode,
+        analyzer_mode: str,
     ) -> ProcessMeetingResult:
         run_id = str(uuid.uuid4())
         segments = self.normalizer.normalize_text(meeting.meeting_id, transcript)
-        minutes = create_analyzer(self.analyzer_mode).analyze(meeting.meeting_id, meeting.title, segments)
+        provider = ProviderMode(provider_mode)
+        minutes = create_analyzer(analyzer_mode).analyze(meeting.meeting_id, meeting.title, segments)
+        minutes = EvidenceIntegrityValidator().validate_minutes(minutes, segments)
         write_plan = WritePlanBuilder().build(
             run_id=run_id,
             meeting=meeting,
@@ -197,10 +239,13 @@ class PostMeetingWorkflow:
         run = Run(
             run_id=run_id,
             status=status,
+            provider_mode=provider,
+            analyzer_mode=analyzer_mode,
             meeting=meeting,
             transcript_segments=segments,
             minutes=minutes,
             write_plan=write_plan,
+            write_plan_created_at=datetime.now(timezone.utc).isoformat() if write_plan.operations else None,
         )
         paths = self.memory.persist_run(run)
         paths.extend(MemoryWorkflow(self.workspace).consolidate_run(run))

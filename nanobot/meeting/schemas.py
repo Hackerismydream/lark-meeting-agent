@@ -218,6 +218,7 @@ class WriteOperation(MeetingBaseModel):
     target: dict[str, Any] = Field(default_factory=dict)
     dry_run_payload: dict[str, Any] = Field(default_factory=dict)
     preview: str
+    idempotency_key: str = ""
     requires_approval: bool = True
     approval_status: ApprovalStatus = ApprovalStatus.PENDING
     execution_status: ExecutionStatus = ExecutionStatus.PENDING
@@ -495,10 +496,14 @@ class QAInput(MeetingBaseModel):
 class Run(MeetingBaseModel):
     run_id: str
     status: RunStatus
+    provider_mode: ProviderMode = ProviderMode.FAKE
+    analyzer_mode: AnalyzerMode = AnalyzerMode.FAKE
     meeting: Meeting | None = None
     transcript_segments: list[TranscriptSegment] = Field(default_factory=list)
     minutes: MeetingMinutes | None = None
     write_plan: WritePlan | None = None
     errors: list[str] = Field(default_factory=list)
+    write_plan_created_at: str | None = None
+    approved_at: str | None = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

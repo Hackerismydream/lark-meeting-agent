@@ -6,6 +6,7 @@ import pytest
 
 from nanobot.agent.tools.lark_meeting import LarkMeetingTool
 from nanobot.meeting.memory import MeetingMemoryStore
+from nanobot.meeting.errors import ApprovalProviderMismatchError
 from nanobot.meeting.schemas import ApprovalStatus, ExecutionStatus
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
@@ -43,6 +44,43 @@ def test_approve_executes_only_selected_operations(tmp_path: Path) -> None:
     skipped = [op for op in approved.write_plan.operations if op.execution_status == ExecutionStatus.SKIPPED]
     assert [op.operation_id for op in executed] == [selected]
     assert skipped
+
+
+def test_process_snapshot_records_provider_and_analyzer_modes(tmp_path: Path) -> None:
+    workflow = PostMeetingWorkflow(workspace=tmp_path, provider_mode="cli", analyzer_mode="fake")
+    result = workflow.process_transcript_file(FIXTURE, create_doc=True, create_tasks=False, dry_run=True)
+
+    run = MeetingMemoryStore(tmp_path).load_run_snapshot(result.run_id)
+
+    assert run.provider_mode == "cli"
+    assert run.analyzer_mode == "fake"
+    assert run.write_plan_created_at
+    assert run.write_plan is not None
+    assert all(op.idempotency_key for op in run.write_plan.operations)
+
+
+def test_approve_rejects_provider_mismatch_without_override(tmp_path: Path) -> None:
+    workflow = PostMeetingWorkflow(workspace=tmp_path, provider_mode="fake", analyzer_mode="fake")
+    result = workflow.process_transcript_file(FIXTURE, create_doc=True, create_tasks=False, dry_run=True)
+    operation_id = result.write_plan.operations[0].operation_id
+
+    with pytest.raises(ApprovalProviderMismatchError):
+        workflow.approve(result.run_id, [operation_id], provider_mode="cli")
+
+
+def test_repeated_approve_does_not_execute_completed_operation_again(tmp_path: Path) -> None:
+    workflow = PostMeetingWorkflow(workspace=tmp_path, provider_mode="fake", analyzer_mode="fake")
+    result = workflow.process_transcript_file(FIXTURE, create_doc=True, create_tasks=False, dry_run=True)
+    operation_id = result.write_plan.operations[0].operation_id
+
+    first = workflow.approve(result.run_id, [operation_id])
+    second = workflow.approve(result.run_id, [operation_id])
+
+    first_op = first.write_plan.operations[0]
+    second_op = second.write_plan.operations[0]
+    assert first_op.execution_status == ExecutionStatus.COMPLETED
+    assert second_op.execution_status == ExecutionStatus.COMPLETED
+    assert first_op.result == second_op.result
 
 
 def test_meeting_memory_qa_returns_sources_and_insufficient_evidence(tmp_path: Path) -> None:

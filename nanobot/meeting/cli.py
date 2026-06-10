@@ -42,7 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     approve = sub.add_parser("approve")
     approve.add_argument("--run-id", required=True)
     approve.add_argument("--operation-ids", required=True)
-    approve.add_argument("--provider-mode", default="fake", choices=["fake", "cli"])
+    approve.add_argument("--provider-mode", choices=["fake", "cli"])
+    approve.add_argument("--override-provider-mode", action="store_true")
 
     qa = sub.add_parser("qa")
     qa.add_argument("--question", required=True)
@@ -99,7 +100,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "approve":
         operation_ids = [part.strip() for part in args.operation_ids.split(",") if part.strip()]
-        result = PostMeetingWorkflow(workspace, args.provider_mode, "fake").approve(args.run_id, operation_ids)
+        result = PostMeetingWorkflow(workspace, args.provider_mode or "fake", "fake").approve(
+            args.run_id,
+            operation_ids,
+            provider_mode=args.provider_mode,
+            override_provider_mode=args.override_provider_mode,
+        )
         print(result.model_dump_json(indent=2))
         return 0
     if args.command == "qa":

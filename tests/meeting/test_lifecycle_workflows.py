@@ -134,6 +134,7 @@ def test_lifecycle_evaluator_computes_resume_profile_metrics(tmp_path: Path) -> 
     report = LifecycleEvaluator(tmp_path).evaluate_file(CASES, tmp_path / "report.json")
 
     assert report.passed is True
+    assert report.profile == "deterministic-regression"
     assert report.metrics.action_precision >= 0.9
     assert report.metrics.action_recall >= 0.85
     assert report.metrics.evidence_coverage == 1.0

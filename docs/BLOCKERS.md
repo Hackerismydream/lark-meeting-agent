@@ -6,6 +6,8 @@ Status: blocked by missing real meeting transcript/minutes data in the currently
 
 The repository implementation, OpenSpec delivery changes, fake CI gates, local real-mode helper, DeepSeek real LLM dry-run, lifecycle fake benchmark, and `lark-cli` user authorization are in place.
 
+The project is currently best described as a lifecycle local MVP: post-meeting is the most complete closed-loop workflow; pre-brief and live support are implemented for controlled local/fake inputs and supplied transcript/event deltas. The project does not claim automatic meeting bot join, custom ASR, production OAuth, PostgreSQL/vector DB deployment, or production Feishu rollout.
+
 The remaining external-data limitation is that the currently authorized Feishu/Lark user has meetings visible to `vc +search`, but those meetings do not have readable notes/minute transcript content. `minutes +search` is also authorized and returns zero accessible minute records for the checked date ranges.
 
 Observed command:
@@ -59,6 +61,7 @@ count: 0 accessible minute records
 - Hardened the LLM analyzer boundary to normalize common real-model JSON deviations while preserving strict internal schemas.
 - Verified real DeepSeek dry-run with the transcript fixture.
 - Avoided committing authorization URLs, device codes, or secrets.
+- Added `docs/LARK_CLI_VERIFICATION_MATRIX.md` to separate adapter implementation from real smoke status.
 
 ## Remaining Decision or Action Needed
 

@@ -1,19 +1,19 @@
 # Lark Meeting Agent
 
-Lark Meeting Agent is a Feishu/Lark-native meeting workflow agent for pre-meeting briefs, live transcript understanding, post-meeting minutes, approval-gated writeback, long-term meeting memory, and source-grounded cross-meeting QA.
+Lark Meeting Agent is a Feishu/Lark-native lifecycle local MVP for pre-meeting briefs, live transcript/event understanding, post-meeting minutes, approval-gated writeback, long-term meeting memory, and source-grounded cross-meeting QA.
 
 ## Current Status
 
-This repository contains the lifecycle implementation on top of the existing post-meeting MVP.
+This repository contains a lifecycle local MVP. `PostMeetingWorkflow` is the most complete closed-loop slice; `PreBriefWorkflow` and `LiveMeetingWorkflow` are first implementations driven by controlled Lark reads, local memory, templates, and supplied transcript/event deltas.
 
 Implemented:
 
-- `PreBriefWorkflow`: calendar/doc/task/memory context collection and sourced pre-briefs.
-- `LiveMeetingWorkflow`: incremental transcript/event ingestion, rolling state, decision/action/risk/question candidates, and source-grounded live QA.
+- `PreBriefWorkflow`: read-only calendar/doc/task/memory context collection and sourced pre-briefs using retrieval plus templates.
+- `LiveMeetingWorkflow`: incremental supplied transcript/event ingestion, rolling state, decision/action/risk/question candidates, and source-grounded live QA.
 - `PostMeetingWorkflow`: transcript normalization, structured minutes, decisions, action items, risks, open questions, write plans, and approval-gated writes.
 - `MemoryWorkflow`: layered JSONL memory for meetings, segments, minutes, decisions, action items, risks, questions, entity memories, traces, and retrieval metadata.
 - `LarkToolAdapter`: the only Lark boundary, with fake and `lark-cli` providers, allowlisted operations, dry-run writes, approval checks, retry, audit, and redaction.
-- Evaluation: 31 compact fixture cases with action/decision precision and recall, evidence coverage, schema success, tool safety, and QA source metrics.
+- Evaluation: 31 compact deterministic fixture regression cases with action/decision precision and recall, evidence coverage, schema success, tool safety, and QA source metrics.
 
 Not claimed:
 
@@ -23,7 +23,7 @@ Not claimed:
 - no mandatory PostgreSQL/vector database service,
 - no production OAuth onboarding.
 
-Real Lark read/write paths exist through `lark-cli`, but readable meeting minutes depend on the authorized account having accessible meeting notes. Current account limitations are documented in `docs/BLOCKERS.md`.
+Real Lark read/write paths exist through `lark-cli`, but readable meeting minutes depend on the authorized account having accessible meeting notes. Current account limitations are documented in `docs/BLOCKERS.md`; operation-level verification status is tracked in `docs/LARK_CLI_VERIFICATION_MATRIX.md`.
 
 ## Current Change
 

@@ -26,9 +26,10 @@ Latest local result:
 
 ```text
 compileall passed
-33 passed, 2 skipped
+41 passed, 3 skipped
 ruff passed
 OpenSpec change valid
+scripts/lma-real status passed
 ```
 
 ## Benchmark Evidence
@@ -41,9 +42,10 @@ uv run python -m nanobot.meeting.cli evaluate \
   --output /tmp/lma-lifecycle-smoke/eval.json
 ```
 
-Result on the bundled 31-case fixture benchmark:
+Result on the bundled 31-case deterministic fixture regression benchmark:
 
 ```text
+profile: deterministic-regression
 action_precision: 1.0
 action_recall: 1.0
 decision_precision: 1.0
@@ -56,7 +58,15 @@ safety_pass_rate: 1.0
 passed: true
 ```
 
-These are fixture-benchmark metrics, not production deployment metrics.
+These are deterministic fixture-benchmark metrics, not production deployment metrics and not real LLM extraction metrics.
+
+Optional real LLM extraction benchmark fixtures are available at `tests/fixtures/meeting/evaluation/llm_extraction_cases.json`. They are skipped by default and run only with:
+
+```bash
+RUN_REAL_LLM_TESTS=1 uv run python -m pytest tests/meeting -q
+```
+
+Do not claim LLM extraction benchmark metrics unless that opt-in command has actually been run.
 
 ## Real Lark Status
 
@@ -72,6 +82,8 @@ scripts/lma-real approve --run-id <run_id> --operation-ids <op1,op2>
 ```
 
 The current account can authenticate and search visible VC meetings, but readable minutes/transcript content remains account-data dependent. The real transcript blocker is documented in `docs/BLOCKERS.md`.
+
+Operation-level real-smoke status is tracked in `docs/LARK_CLI_VERIFICATION_MATRIX.md`.
 
 ## Not Claimed
 

@@ -9,6 +9,7 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from nanobot.meeting.evidence import EvidenceIntegrityValidator
 from nanobot.meeting.errors import AnalyzerValidationError
 from nanobot.meeting.prompts import build_repair_prompt, build_system_prompt, build_user_prompt
 from nanobot.meeting.schemas import (
@@ -189,8 +190,12 @@ class OpenAICompatibleMeetingAnalyzer:
     def _parse_minutes(content: str, segments: list[TranscriptSegment] | None = None) -> MeetingMinutes:
         try:
             data = json.loads(_extract_json(content))
-            data = _normalize_llm_minutes(data, segments or [])
-            return MeetingMinutes.model_validate(data)
+            transcript_segments = segments or []
+            data = _normalize_llm_minutes(data, transcript_segments)
+            minutes = MeetingMinutes.model_validate(data)
+            if transcript_segments:
+                return EvidenceIntegrityValidator().validate_minutes(minutes, transcript_segments)
+            return minutes
         except (json.JSONDecodeError, ValidationError) as exc:
             raise AnalyzerValidationError(f"invalid analyzer output: {exc}") from exc
 

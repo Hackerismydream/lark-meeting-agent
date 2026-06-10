@@ -1,6 +1,6 @@
 # MVP Delivery Report
 
-This report records the completed post-meeting MVP. The current lifecycle implementation is documented in `docs/LIFECYCLE_DELIVERY_REPORT.md`.
+This report records the completed post-meeting MVP. The current implementation is now a lifecycle local MVP, with post-meeting remaining the most complete closed-loop slice. The lifecycle implementation and its limits are documented in `docs/LIFECYCLE_DELIVERY_REPORT.md`.
 
 ## Delivered
 

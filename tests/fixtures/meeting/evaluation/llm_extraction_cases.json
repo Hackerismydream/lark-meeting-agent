@@ -1,0 +1,54 @@
+{
+  "cases": [
+    {
+      "case_id": "llm-001",
+      "meeting_type": "project_sync",
+      "transcript": "[00:01] Alice：决定支付改版先灰度上线。\n[00:02] Bob：Bob 负责补充灰度风险清单。",
+      "expected": {
+        "decisions": ["支付改版先灰度上线"],
+        "action_items": ["Bob 负责补充灰度风险清单"],
+        "evidence_segment_ids": ["seg-0001", "seg-0002"]
+      }
+    },
+    {
+      "case_id": "llm-002",
+      "meeting_type": "customer_meeting",
+      "transcript": "[00:01] Carol：确认客户最关注审计日志导出。\n[00:02] Alice：Alice 负责准备审计日志演示文档。",
+      "expected": {
+        "decisions": ["客户最关注审计日志导出"],
+        "action_items": ["Alice 负责准备审计日志演示文档"],
+        "evidence_segment_ids": ["seg-0001", "seg-0002"]
+      }
+    },
+    {
+      "case_id": "llm-003",
+      "meeting_type": "technical_review",
+      "transcript": "[00:01] Dave：采用 JSONL 作为当前本地记忆存储。\n[00:02] Erin：Erin 负责评估后续 PostgreSQL 迁移成本。",
+      "expected": {
+        "decisions": ["采用 JSONL 作为当前本地记忆存储"],
+        "action_items": ["Erin 负责评估后续 PostgreSQL 迁移成本"],
+        "evidence_segment_ids": ["seg-0001", "seg-0002"]
+      }
+    },
+    {
+      "case_id": "llm-004",
+      "meeting_type": "requirement_review",
+      "transcript": "[00:01] Alice：确认第一期只支持文档和任务写回。\n[00:02] Bob：Bob 负责补充 IM 通知的验收条件。",
+      "expected": {
+        "decisions": ["第一期只支持文档和任务写回"],
+        "action_items": ["Bob 负责补充 IM 通知的验收条件"],
+        "evidence_segment_ids": ["seg-0001", "seg-0002"]
+      }
+    },
+    {
+      "case_id": "llm-005",
+      "meeting_type": "incident_review",
+      "transcript": "[00:01] Frank：决定所有写操作必须先生成 dry-run 预览。\n[00:02] Carol：Carol 负责增加重复审批测试。",
+      "expected": {
+        "decisions": ["所有写操作必须先生成 dry-run 预览"],
+        "action_items": ["Carol 负责增加重复审批测试"],
+        "evidence_segment_ids": ["seg-0001", "seg-0002"]
+      }
+    }
+  ]
+}

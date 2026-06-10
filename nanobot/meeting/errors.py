@@ -21,12 +21,20 @@ class AnalyzerValidationError(MeetingAgentError):
     """Raised when analyzer output fails schema or evidence validation."""
 
 
+class EvidenceValidationError(AnalyzerValidationError):
+    """Raised when analyzer evidence cannot be grounded in transcript segments."""
+
+
 class MissingEvidenceError(AnalyzerValidationError):
     """Raised when confirmed outputs lack transcript evidence."""
 
 
 class ApprovalRequiredError(MeetingAgentError):
     """Raised when a write operation is attempted without explicit approval."""
+
+
+class ApprovalProviderMismatchError(MeetingAgentError):
+    """Raised when approval tries to use a provider different from the run snapshot."""
 
 
 class ToolOperationNotAllowedError(MeetingAgentError):

@@ -21,7 +21,7 @@ class LifecycleEvaluator:
         raw = json.loads(Path(path).read_text())
         return [EvaluationCase.model_validate(item) for item in raw["cases"]]
 
-    def evaluate_cases(self, cases: list[EvaluationCase], profile: str = "resume") -> EvaluationReport:
+    def evaluate_cases(self, cases: list[EvaluationCase], profile: str = "deterministic-regression") -> EvaluationReport:
         case_results = []
         action_tp = action_fp = action_fn = 0
         decision_tp = decision_fp = decision_fn = 0
