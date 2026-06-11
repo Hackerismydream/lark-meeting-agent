@@ -13,24 +13,29 @@ Real live smoke is opt-in and not required for default tests.
 
 ## Commands
 
+Dry-run classification without joining:
+
 ```bash
-join_json=$(scripts/lma-real live-join \
+scripts/lma-real live-smoke --meeting-number <9-digit-meeting-number>
+```
+
+Real visible smoke:
+
+```bash
+scripts/lma-real live-smoke \
   --meeting-number <9-digit-meeting-number> \
-  --approve-visible-join)
-live_run_id=$(printf '%s' "$join_json" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["live_run_id"])')
-meeting_id=$(printf '%s' "$join_json" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["meeting_id"])')
-
-scripts/lma-real live-poll \
-  --meeting-id "$meeting_id" \
-  --live-run-id "$live_run_id"
-
-scripts/lma-real live-qa \
-  --live-run-id "$live_run_id" \
-  --question "目前有哪些结论和待办？"
-
-scripts/lma-real live-leave \
-  --meeting-id "$meeting_id" \
+  --approve-visible-join \
   --approve-visible-leave
+```
+
+Optional sanitized raw event shape export:
+
+```bash
+scripts/lma-real live-smoke \
+  --meeting-number <9-digit-meeting-number> \
+  --approve-visible-join \
+  --approve-visible-leave \
+  --export-raw-event-shapes /tmp/lma-live-event-shapes.json
 ```
 
 ## Failure Classes
@@ -42,7 +47,8 @@ scripts/lma-real live-leave \
 - meeting ended,
 - no transcript event emitted,
 - page token issue,
-- unknown event shape.
+- unknown event shape,
+- no events.
 
 ## Pre-Smoke Hardening Checks
 

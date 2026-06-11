@@ -40,6 +40,20 @@ class LiveLarkPollResult(MeetingBaseModel):
     converted_event_count: int = 0
 
 
+class LiveSmokeResult(MeetingBaseModel):
+    status: str
+    provider_mode: ProviderMode
+    meeting_number: str | None = None
+    meeting_id: str | None = None
+    live_run_id: str | None = None
+    page_token: str | None = None
+    event_count: int = 0
+    qa_sufficient: bool | None = None
+    failure_class: str | None = None
+    error: str | None = None
+    raw_event_shape_path: str | None = None
+
+
 class LiveLarkMeetingWorkflow:
     def __init__(self, workspace: Path | str, provider_mode: ProviderMode | str = ProviderMode.FAKE) -> None:
         self.workspace = Path(workspace)
@@ -147,6 +161,62 @@ class LiveLarkMeetingWorkflow:
     def qa(self, live_run_id: str, question: str):
         return self.live.qa(live_run_id, question)
 
+    def live_smoke(
+        self,
+        *,
+        meeting_number: str | None,
+        approve_visible_join: bool = False,
+        approve_visible_leave: bool = False,
+        export_raw_event_shapes: Path | str | None = None,
+    ) -> LiveSmokeResult:
+        if not meeting_number:
+            return LiveSmokeResult(
+                status="missing_meeting_number",
+                provider_mode=self.provider_mode,
+                error="--meeting-number is required for live-smoke",
+            )
+        if not approve_visible_join or not approve_visible_leave:
+            return LiveSmokeResult(
+                status="dry_run",
+                provider_mode=self.provider_mode,
+                meeting_number=meeting_number,
+                error="real smoke not executed; pass --approve-visible-join and --approve-visible-leave to visibly join and leave",
+            )
+        try:
+            session = self.join(
+                meeting_number=meeting_number,
+                dry_run=False,
+                approval_status=ApprovalStatus.APPROVED,
+            )
+            poll = self.poll(session.meeting_id, live_run_id=session.live_run_id)
+            answer = self.qa(session.live_run_id, "目前有哪些结论和待办？")
+            raw_path = None
+            if export_raw_event_shapes:
+                raw_path = str(write_sanitized_event_shapes(poll.raw, export_raw_event_shapes, self.adapter))
+            self.leave(session.meeting_id, dry_run=False, approval_status=ApprovalStatus.APPROVED)
+            status = "completed" if poll.converted_event_count else "blocked"
+            failure_class = None if poll.converted_event_count else "no_events"
+            return LiveSmokeResult(
+                status=status,
+                provider_mode=self.provider_mode,
+                meeting_number=meeting_number,
+                meeting_id=session.meeting_id,
+                live_run_id=session.live_run_id,
+                page_token=poll.page_token,
+                event_count=poll.converted_event_count,
+                qa_sufficient=answer.sufficient,
+                failure_class=failure_class,
+                raw_event_shape_path=raw_path,
+            )
+        except Exception as exc:
+            return LiveSmokeResult(
+                status="blocked",
+                provider_mode=self.provider_mode,
+                meeting_number=meeting_number,
+                failure_class=classify_live_smoke_error(str(exc)),
+                error=self.adapter.redact(str(exc)),
+            )
+
     def convert_events(self, raw: dict[str, Any], *, session: LiveLarkSession) -> list[LiveMeetingEvent]:
         events = raw.get("events") or raw.get("data", {}).get("events") or raw.get("items") or raw.get("data", {}).get("items") or []
         converted: list[LiveMeetingEvent] = []
@@ -230,3 +300,56 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 def _valid_meeting_number(value: str) -> bool:
     return len(value) == 9 and value.isdigit()
+
+
+def classify_live_smoke_error(message: str) -> str:
+    normalized = message.lower()
+    if "permission" in normalized or "scope" in normalized or "unauthorized" in normalized:
+        return "permission"
+    if "errnotingray" in normalized or "gray" in normalized or "early" in normalized:
+        return "gray"
+    if "not in meeting" in normalized or "bot is not in meeting" in normalized:
+        return "not_in_meeting"
+    if "meeting_status_meeting_end" in normalized or "meeting ended" in normalized or "meeting_end" in normalized:
+        return "meeting_ended"
+    if "page_token" in normalized or "page token" in normalized:
+        return "page_token_issue"
+    if "malformed" in normalized or "unknown event" in normalized or "json" in normalized:
+        return "unknown_event_shape"
+    return "unknown_error"
+
+
+def write_sanitized_event_shapes(raw: dict[str, Any], output_path: Path | str, adapter: LarkToolAdapter) -> Path:
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    events = raw.get("events") or raw.get("data", {}).get("events") or []
+    shapes = []
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        shapes.append(_shape(event))
+    sanitized = json_safe_redact({"events": shapes, "has_more": raw.get("has_more"), "page_token_present": bool(_page_token(raw))}, adapter)
+    output.write_text(sanitized)
+    return output
+
+
+def json_safe_redact(value: dict[str, Any], adapter: LarkToolAdapter) -> str:
+    import json
+
+    return adapter.redact(json.dumps(value, ensure_ascii=False, indent=2, default=str))
+
+
+def _shape(value: dict[str, Any]) -> dict[str, Any]:
+    shape: dict[str, Any] = {}
+    for key, item in value.items():
+        if isinstance(item, dict):
+            shape[key] = _shape(item)
+        elif isinstance(item, list):
+            shape[key] = ["list"]
+        elif key in {"event_type", "type"}:
+            shape[key] = item
+        elif key in {"event_id", "id", "segment_id"}:
+            shape[key] = "<id>"
+        else:
+            shape[key] = type(item).__name__
+    return shape

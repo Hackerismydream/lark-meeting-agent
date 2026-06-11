@@ -4,13 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KEYCHAIN_SERVICE="${LMA_KEYCHAIN_SERVICE:-lark-meeting-agent.deepseek-api-key}"
 KEYCHAIN_ACCOUNT="${LMA_KEYCHAIN_ACCOUNT:-${USER}}"
+subcommand="${1:-process}"
 
-if [[ -z "${LMA_LLM_API_KEY:-}" ]]; then
+if [[ "$subcommand" == "process" && -z "${LMA_LLM_API_KEY:-}" ]]; then
   LMA_LLM_API_KEY="$(security find-generic-password -a "$KEYCHAIN_ACCOUNT" -s "$KEYCHAIN_SERVICE" -w 2>/dev/null || true)"
   export LMA_LLM_API_KEY
 fi
 
-if [[ -z "${LMA_LLM_API_KEY:-}" ]]; then
+if [[ "$subcommand" == "process" && -z "${LMA_LLM_API_KEY:-}" ]]; then
   echo "Missing DeepSeek API key. Store it in macOS Keychain service '$KEYCHAIN_SERVICE' or export LMA_LLM_API_KEY." >&2
   exit 2
 fi
@@ -32,7 +33,6 @@ fi
 
 cd "$ROOT_DIR"
 
-subcommand="${1:-process}"
 case "$subcommand" in
   process)
     shift || true
@@ -61,7 +61,7 @@ case "$subcommand" in
     shift || true
     exec uv run python -m nanobot.meeting.cli "$subcommand" "$@"
     ;;
-  live-join|live-poll|live-leave)
+  live-join|live-poll|live-leave|live-smoke)
     shift || true
     exec uv run python -m nanobot.meeting.cli "$subcommand" \
       --provider-mode "$LMA_PROVIDER_MODE" \

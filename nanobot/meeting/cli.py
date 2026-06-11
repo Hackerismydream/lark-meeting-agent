@@ -105,6 +105,13 @@ def main(argv: list[str] | None = None) -> int:
     live_leave.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
     live_leave.add_argument("--approve-visible-leave", action="store_true")
 
+    live_smoke = sub.add_parser("live-smoke")
+    live_smoke.add_argument("--meeting-number")
+    live_smoke.add_argument("--provider-mode", default="fake", choices=PROVIDER_MODE_CHOICES)
+    live_smoke.add_argument("--approve-visible-join", action="store_true")
+    live_smoke.add_argument("--approve-visible-leave", action="store_true")
+    live_smoke.add_argument("--export-raw-event-shapes")
+
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--cases", default="tests/fixtures/meeting/evaluation/lifecycle_cases.json")
     evaluate.add_argument("--output")
@@ -220,6 +227,15 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
+    if args.command == "live-smoke":
+        result = LiveLarkMeetingWorkflow(workspace, args.provider_mode).live_smoke(
+            meeting_number=args.meeting_number,
+            approve_visible_join=args.approve_visible_join,
+            approve_visible_leave=args.approve_visible_leave,
+            export_raw_event_shapes=args.export_raw_event_shapes,
+        )
+        print(result.model_dump_json(indent=2))
+        return 2 if result.status == "missing_meeting_number" else 0
     if args.command == "evaluate":
         report = LifecycleEvaluator(workspace).evaluate_file(args.cases, args.output)
         print(report.model_dump_json(indent=2))
