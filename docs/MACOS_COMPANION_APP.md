@@ -127,14 +127,14 @@ Current shell capabilities:
 - Today meeting list from `GET /v1/meetings/today`.
 - Pre-brief generation through `POST /v1/prebrief`.
 - Run status and trace inspection through `GET /v1/runs`, `GET /v1/runs/{run_id}`, and `GET /v1/runs/{run_id}/trace`.
+- Cross-meeting source-grounded search through `POST /v1/search`.
+- Local text transcript upload through `POST /v1/upload/transcript` for `.txt`, `.md`, and `.json`.
 - Bearer token injection from a credential store.
 - Keychain-backed credential store plus in-memory test store.
 - Core smoke runner covering status decode, bearer token header injection, and credential round trip.
 
 Deferred to later V1.1 phases:
 
-- memory search,
-- transcript upload,
 - packaging, signing, and notarization docs.
 
 ## Phase 3 Validation

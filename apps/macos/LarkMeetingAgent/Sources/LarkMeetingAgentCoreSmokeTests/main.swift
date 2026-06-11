@@ -7,8 +7,75 @@ struct SmokeTests {
         try await statusDecodesEnvelopeAndSendsBearerToken()
         try await pendingPlansDecodeAndApproveSendsExplicitOperationIDs()
         try await preBriefRunsAndTraceDecode()
+        try await searchAndUploadDecode()
         try inMemoryCredentialStoreRoundTripsToken()
+        try uploadExtensionAllowlistRejectsAudio()
         print("LarkMeetingAgentCore smoke tests passed")
+    }
+
+    private static func searchAndUploadDecode() async throws {
+        let transport = MockTransport(
+            data: """
+            {
+              "ok": true,
+              "data": {
+                "question": "What did Alice decide?",
+                "answer": "Alice decided to ship the pilot.",
+                "sources": [
+                  {
+                    "meeting_id": "m-1",
+                    "segment_id": "seg-1",
+                    "kind": "segment",
+                    "text": "Ship the pilot",
+                    "speaker_name": "Alice",
+                    "timestamp": "00:02"
+                  }
+                ],
+                "sufficient": true
+              },
+              "error": null
+            }
+            """.data(using: .utf8)!
+        )
+        let client = AgentAPIClient(baseURL: URL(string: "http://127.0.0.1:8765")!, bearerTokenProvider: { nil }, transport: transport)
+
+        let answer = try await client.search(question: "What did Alice decide?")
+
+        try assert(answer.sufficient, "expected sufficient answer")
+        try assert(answer.sources.first?.meetingID == "m-1", "expected meeting source")
+
+        transport.data = """
+        {
+          "ok": true,
+          "data": {
+            "run_id": "run-upload",
+            "status": "approval_required",
+            "meeting": null,
+            "minutes": null,
+            "write_plan": {
+              "run_id": "run-upload",
+              "status": "approval_required",
+              "operations": []
+            },
+            "persisted_paths": [],
+            "errors": []
+          },
+          "error": null
+        }
+        """.data(using: .utf8)!
+        let upload = try await client.uploadTranscript(
+            filename: "demo.md",
+            content: "# transcript",
+            createDoc: true,
+            createTasks: true,
+            sendMessage: false,
+            chatID: nil
+        )
+
+        try assert(upload.runID == "run-upload", "expected upload run")
+        let body = try JSONSerialization.jsonObject(with: transport.lastRequest?.httpBody ?? Data()) as? [String: Any]
+        try assert(body?["filename"] as? String == "demo.md", "expected upload filename")
+        try assert(body?["send_message"] as? Bool == false, "expected no message write preview")
     }
 
     private static func preBriefRunsAndTraceDecode() async throws {
@@ -189,6 +256,11 @@ struct SmokeTests {
         try store.deleteToken()
         let deletedToken = try store.loadToken()
         try assert(deletedToken == nil, "expected deleted token")
+    }
+
+    private static func uploadExtensionAllowlistRejectsAudio() throws {
+        try assert(!SearchUploadViewModel.allowedTranscriptExtensions.contains("mp3"), "audio upload must not be allowed")
+        try assert(SearchUploadViewModel.allowedTranscriptExtensions == ["txt", "md", "json"], "expected text transcript extensions")
     }
 
     private static func assert(_ condition: @autoclosure () -> Bool, _ message: String) throws {

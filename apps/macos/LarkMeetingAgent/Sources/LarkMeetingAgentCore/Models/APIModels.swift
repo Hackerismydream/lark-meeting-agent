@@ -177,6 +177,33 @@ public struct RunTraceEvent: Decodable, Identifiable, Equatable, Sendable {
     }
 }
 
+public struct QAAnswer: Decodable, Equatable, Sendable {
+    public let question: String
+    public let answer: String
+    public let sources: [SourceCitation]
+    public let sufficient: Bool
+}
+
+public struct UploadTranscriptResult: Decodable, Equatable, Sendable {
+    public let runID: String
+    public let status: String
+    public let meeting: JSONValue?
+    public let minutes: JSONValue?
+    public let writePlan: WritePlanSnapshot?
+    public let persistedPaths: [String]
+    public let errors: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case runID = "run_id"
+        case status
+        case meeting
+        case minutes
+        case writePlan = "write_plan"
+        case persistedPaths = "persisted_paths"
+        case errors
+    }
+}
+
 public struct PendingWritePlan: Decodable, Identifiable, Equatable, Sendable {
     public let runID: String
     public let status: String

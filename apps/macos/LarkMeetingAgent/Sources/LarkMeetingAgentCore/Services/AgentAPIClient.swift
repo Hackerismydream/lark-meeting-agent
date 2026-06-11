@@ -80,6 +80,38 @@ public final class AgentAPIClient: Sendable {
         throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
     }
 
+    public func search(question: String, filters: [String: String] = [:]) async throws -> QAAnswer {
+        let body = SearchBody(question: question, filters: filters)
+        let envelope: APIEnvelope<QAAnswer> = try await post("/v1/search", body: body)
+        if let data = envelope.data, envelope.ok {
+            return data
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
+    public func uploadTranscript(
+        filename: String,
+        content: String,
+        createDoc: Bool,
+        createTasks: Bool,
+        sendMessage: Bool,
+        chatID: String?
+    ) async throws -> UploadTranscriptResult {
+        let body = TranscriptUploadBody(
+            filename: filename,
+            content: content,
+            createDoc: createDoc,
+            createTasks: createTasks,
+            sendMessage: sendMessage,
+            chatID: chatID
+        )
+        let envelope: APIEnvelope<UploadTranscriptResult> = try await post("/v1/upload/transcript", body: body)
+        if let data = envelope.data, envelope.ok {
+            return data
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
     public func approve(runID: String, operationIDs: [String]) async throws {
         let body = ApproveBody(operationIDs: operationIDs)
         let envelope: APIEnvelope<JSONValue> = try await post("/v1/runs/\(runID)/approve", body: body)
@@ -152,5 +184,28 @@ private struct PreBriefBody: Encodable, Sendable {
         case meetingType = "meeting_type"
         case project
         case customer
+    }
+}
+
+private struct SearchBody: Encodable, Sendable {
+    let question: String
+    let filters: [String: String]
+}
+
+private struct TranscriptUploadBody: Encodable, Sendable {
+    let filename: String
+    let content: String
+    let createDoc: Bool
+    let createTasks: Bool
+    let sendMessage: Bool
+    let chatID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case filename
+        case content
+        case createDoc = "create_doc"
+        case createTasks = "create_tasks"
+        case sendMessage = "send_message"
+        case chatID = "chat_id"
     }
 }

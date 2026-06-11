@@ -20,6 +20,8 @@ struct StatusView: View {
             Divider()
             PreBriefTracePanelView()
             Divider()
+            SearchUploadPanelView()
+            Divider()
             Button("Settings...") {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }

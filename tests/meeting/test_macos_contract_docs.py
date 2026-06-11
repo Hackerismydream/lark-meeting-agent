@@ -58,3 +58,15 @@ def test_macos_prebrief_trace_viewer_doc_is_read_oriented() -> None:
     assert "Inspecting traces cannot trigger approval" in text
     assert "POST /v1/prebrief" in text
     assert "GET /v1/runs/{run_id}/trace" in text
+
+
+def test_macos_search_upload_doc_rejects_audio_and_preserves_backend_boundary() -> None:
+    text = Path("docs/MACOS_SEARCH_UPLOAD.md").read_text()
+
+    assert "POST /v1/search" in text
+    assert "meeting_id" in text
+    assert "segment_id" in text
+    assert ".txt" in text and ".md" in text and ".json" in text
+    assert "does not implement ASR" in text
+    assert "audio transcription" in text
+    assert "Real writes still require backend approval and LarkToolAdapter execution" in text
