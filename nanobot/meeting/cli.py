@@ -9,6 +9,7 @@ from pathlib import Path
 from nanobot.meeting.memory import MeetingMemoryStore
 from nanobot.meeting.evals import LifecycleEvaluator
 from nanobot.meeting.live import LiveMeetingWorkflow
+from nanobot.meeting.live_evidence import LiveMeetingEvidenceRunner
 from nanobot.meeting.live_lark import LiveLarkMeetingWorkflow
 from nanobot.meeting.prebrief import PreBriefWorkflow
 from nanobot.meeting.schemas import (
@@ -111,6 +112,13 @@ def main(argv: list[str] | None = None) -> int:
     live_smoke.add_argument("--approve-visible-join", action="store_true")
     live_smoke.add_argument("--approve-visible-leave", action="store_true")
     live_smoke.add_argument("--export-raw-event-shapes")
+
+    live_evidence = sub.add_parser("live-evidence")
+    live_evidence.add_argument("--meeting-number", required=True)
+    live_evidence.add_argument("--provider-mode", default="cli", choices=PROVIDER_MODE_CHOICES)
+    live_evidence.add_argument("--out-root", default="runs/live_real")
+    live_evidence.add_argument("--approve-visible-join", action="store_true")
+    live_evidence.add_argument("--approve-visible-leave", action="store_true")
 
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--cases", default="tests/fixtures/meeting/evaluation/lifecycle_cases.json")
@@ -236,6 +244,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(result.model_dump_json(indent=2))
         return 2 if result.status == "missing_meeting_number" else 0
+    if args.command == "live-evidence":
+        result = LiveMeetingEvidenceRunner(
+            workspace,
+            provider_mode=args.provider_mode,
+            out_root=args.out_root,
+        ).run(
+            args.meeting_number,
+            approve_visible_join=args.approve_visible_join,
+            approve_visible_leave=args.approve_visible_leave,
+        )
+        print(result.model_dump_json(indent=2))
+        return 0
     if args.command == "evaluate":
         report = LifecycleEvaluator(workspace).evaluate_file(args.cases, args.output)
         print(report.model_dump_json(indent=2))

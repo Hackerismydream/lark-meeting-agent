@@ -18,6 +18,18 @@ scripts/lma-real live-smoke \
   --approve-visible-leave
 ```
 
+For the V1.2 evidence pack, prefer:
+
+```bash
+uv run python scripts/live/run_live_meeting_evidence.py \
+  --workspace /Users/martinlos/lark-meeting-agent \
+  --meeting-number <9-digit-meeting-number> \
+  --provider-mode cli \
+  --out-root runs/live_real \
+  --approve-visible-join \
+  --approve-visible-leave
+```
+
 ## Default Behavior
 
 Without approval flags, `live-smoke` returns `dry_run` and does not join.
@@ -60,3 +72,16 @@ openspec validate real-live-meeting-smoke
 - OpenSpec: valid
 
 Real smoke status: not run, because no live meeting number was provided.
+
+## V1.2 Real Meeting Attempt
+
+On 2026-06-11, meeting `909401086` was attempted through the V1.2 evidence runner.
+
+- status: `blocked`
+- failure_class: `permission`
+- event_count: `0`
+- dry-run endpoint: `/open-apis/vc/v1/bots/join`
+- real error: `121003 / HTTP 403: no permission`
+- evidence pack: `runs/live_real/909401086/` (ignored by git)
+
+The next required action is Feishu tenant/app enablement for meeting bot join, not a code-path change in the local workflow.

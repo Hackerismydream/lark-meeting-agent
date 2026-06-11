@@ -69,3 +69,20 @@ Record the result here with:
 - event count,
 - whether raw shapes were exported,
 - confirmation that no secrets or private transcript content were committed.
+
+## V1.2 Evidence Runner Attempt
+
+2026-06-11:
+
+- meeting number: `909401086`
+- provider mode: `cli`
+- command: `uv run python scripts/live/run_live_meeting_evidence.py --workspace /Users/martinlos/lark-meeting-agent --meeting-number "909 401 086" --provider-mode cli --out-root runs/live_real --approve-visible-join --approve-visible-leave`
+- status: `blocked`
+- failure class: `permission`
+- event count: `0`
+- raw shapes exported: no, because join failed before polling
+- dry-run endpoint: `/open-apis/vc/v1/bots/join`
+- real API error: `121003 / HTTP 403: no permission`
+- evidence pack: `runs/live_real/909401086/` (ignored by git)
+
+This result confirms the local runner, approval boundary, adapter path, audit capture, and blocker reporting. It does not prove live transcript ingestion yet because Feishu rejected the visible join.
