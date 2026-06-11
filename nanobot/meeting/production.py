@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +22,12 @@ from nanobot.meeting.schemas import (
     MeetingType,
     PreBriefInput,
     ProcessMeetingInput,
+    ApprovalStatus,
+    ExecutionStatus,
+    ProviderMode,
+    ReadOrWrite,
     RunStatus,
+    ToolCallAuditEvent,
 )
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
@@ -31,6 +39,13 @@ class MeetingBotContext(BaseModel):
     chat_id: str | None = None
     chat_type: Literal["dm", "group"] = "dm"
     mentioned: bool = False
+    text: str | None = None
+    message_id: str | None = None
+
+
+class FeishuMeetingMessage(BaseModel):
+    context: MeetingBotContext
+    text: str
 
 
 class MeetingBotReply(BaseModel):
@@ -56,6 +71,7 @@ class MeetingAgentAccessPolicy:
     allowed_chat_ids: set[str] = field(default_factory=set)
     admin_users: set[str] = field(default_factory=set)
     write_approvers: set[str] = field(default_factory=set)
+    live_approvers: set[str] = field(default_factory=set)
     group_requires_mention_or_command: bool = True
 
     def is_allowed(self, context: MeetingBotContext) -> bool:
@@ -70,10 +86,83 @@ class MeetingAgentAccessPolicy:
     def can_approve(self, context: MeetingBotContext) -> bool:
         return context.sender_id in self.admin_users or context.sender_id in self.write_approvers
 
+    def can_control_live(self, context: MeetingBotContext) -> bool:
+        return context.sender_id in self.admin_users or context.sender_id in self.live_approvers
+
     def should_ignore_group_message(self, context: MeetingBotContext, text: str) -> bool:
         if context.chat_type != "group" or not self.group_requires_mention_or_command:
             return False
         return not context.mentioned and not text.strip().startswith("/meeting")
+
+
+def _dig(data: dict[str, Any], *keys: str) -> Any:
+    current: Any = data
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _extract_feishu_text(message: dict[str, Any]) -> str:
+    text = message.get("text")
+    if isinstance(text, str):
+        return text.strip()
+    content = message.get("content")
+    if isinstance(content, str):
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            return content.strip()
+    elif isinstance(content, dict):
+        parsed = content
+    else:
+        parsed = {}
+    value = parsed.get("text") or parsed.get("content") or ""
+    return str(value).strip()
+
+
+def _is_bot_mentioned(message: dict[str, Any], bot_open_id: str | None) -> bool:
+    if isinstance(message.get("mentioned"), bool):
+        return bool(message["mentioned"])
+    mentions = message.get("mentions") or []
+    if not mentions:
+        return False
+    if not bot_open_id:
+        return True
+    for mention in mentions:
+        open_id = _dig(mention, "id", "open_id") or mention.get("open_id") or _dig(mention, "id", "user_id")
+        if open_id == bot_open_id:
+            return True
+    return False
+
+
+def map_feishu_message_event(event: dict[str, Any], bot_open_id: str | None = None) -> FeishuMeetingMessage:
+    """Map SDK-like or already-normalized Feishu message payloads to bot input."""
+
+    message = event.get("message") if isinstance(event.get("message"), dict) else event
+    sender_id = (
+        _dig(event, "sender", "sender_id", "open_id")
+        or _dig(event, "sender", "sender_id", "user_id")
+        or event.get("sender_id")
+        or message.get("sender_id")
+    )
+    if not sender_id:
+        raise ValueError("Feishu message event missing sender_id")
+    chat_id = message.get("chat_id") or event.get("chat_id")
+    raw_chat_type = str(message.get("chat_type") or event.get("chat_type") or "p2p")
+    chat_type: Literal["dm", "group"] = "group" if raw_chat_type == "group" else "dm"
+    message_id = message.get("message_id") or event.get("message_id")
+    text = _extract_feishu_text(message)
+    context = MeetingBotContext(
+        sender_id=str(sender_id),
+        chat_id=str(chat_id) if chat_id else None,
+        chat_type=chat_type,
+        mentioned=_is_bot_mentioned(message, bot_open_id),
+        text=text,
+        message_id=str(message_id) if message_id else None,
+    )
+    return FeishuMeetingMessage(context=context, text=text)
 
 
 class ProductionConfigWarning(BaseModel):
@@ -184,9 +273,12 @@ class ProductionMeetingBot:
         self.analyzer_mode = analyzer_mode
 
     def handle_message(self, context: MeetingBotContext, text: str) -> MeetingBotReply:
+        if not text and context.text:
+            text = context.text
         if self.policy.should_ignore_group_message(context, text):
             return MeetingBotReply(status="ignored", text="")
         if not self.policy.is_allowed(context):
+            self._audit_denied(context, "sender_not_allowed")
             return MeetingBotReply(status="denied", text="无权限使用会议 Agent。")
         command = parse_meeting_command(text)
         if command.action == "ignored":
@@ -220,7 +312,10 @@ class ProductionMeetingBot:
             self.repository.save_run(run)
             return MeetingBotReply(status="ok", text=run.model_dump_json(indent=2), run_id=run.run_id)
         if command.action == "approve":
+            if not command.run_id or not command.operation_ids:
+                return MeetingBotReply(status="error", text="请提供 run_id 和 operation_ids。")
             if not self.policy.can_approve(context):
+                self._audit_denied(context, "write_approval_denied")
                 return MeetingBotReply(status="denied", text="无权限审批写操作。")
             result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).approve(
                 command.run_id or "",
@@ -235,7 +330,10 @@ class ProductionMeetingBot:
             ] if result.write_plan else []
             return MeetingBotReply(status="ok", text=f"已执行已审批操作: {', '.join(completed) or '无'}", run_id=result.run_id)
         if command.action == "reject":
+            if not command.run_id:
+                return MeetingBotReply(status="error", text="请提供 run_id。")
             if not self.policy.can_approve(context):
+                self._audit_denied(context, "write_reject_denied")
                 return MeetingBotReply(status="denied", text="无权限拒绝写操作。")
             result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).reject(command.run_id or "")
             run = MeetingMemoryStore(self.workspace).load_run_snapshot(result.run_id)
@@ -251,3 +349,31 @@ class ProductionMeetingBot:
             )
             return MeetingBotReply(status="ok", text=brief.model_dump_json(indent=2), run_id=brief.run_id)
         return MeetingBotReply(status="error", text="unsupported command")
+
+    def handle_feishu_event(self, event: dict[str, Any], bot_open_id: str | None = None) -> MeetingBotReply:
+        envelope = map_feishu_message_event(event, bot_open_id=bot_open_id)
+        return self.handle_message(envelope.context, envelope.text)
+
+    def _audit_denied(self, context: MeetingBotContext, reason: str) -> None:
+        self.repository.save_audit_events(
+            [
+                ToolCallAuditEvent(
+                    audit_id=str(uuid4()),
+                    operation_name="production.policy.denied",
+                    provider_mode=ProviderMode.FAKE,
+                    sanitized_input={
+                        "sender_id": context.sender_id,
+                        "chat_id": context.chat_id,
+                        "chat_type": context.chat_type,
+                        "message_id": context.message_id,
+                        "reason": reason,
+                    },
+                    read_or_write=ReadOrWrite.READ,
+                    dry_run=True,
+                    approval_status=ApprovalStatus.REJECTED,
+                    execution_status=ExecutionStatus.FAILED,
+                    error_message=reason,
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                )
+            ]
+        )

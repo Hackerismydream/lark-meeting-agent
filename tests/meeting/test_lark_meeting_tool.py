@@ -39,6 +39,15 @@ async def test_lark_meeting_tool_process_status_qa_and_approve(tmp_path: Path) -
     assert qa_result["sufficient"] is True
 
     approve_response = await tool.execute(action="approve", run_id=run_id, operation_ids=[operation_id])
+    assert approve_response == "Error: production context is required for approve"
+
+    approve_response = await tool.execute(
+        action="approve",
+        run_id=run_id,
+        operation_ids=[operation_id],
+        sender_id="ou_approver",
+        write_approvers=["ou_approver"],
+    )
     approve_result = json.loads(approve_response)
     completed = [
         op
@@ -52,7 +61,7 @@ async def test_lark_meeting_tool_process_status_qa_and_approve(tmp_path: Path) -
 async def test_lark_meeting_tool_validates_required_action_inputs(tmp_path: Path) -> None:
     tool = LarkMeetingTool(workspace=tmp_path)
 
-    assert await tool.execute(action="approve") == "Error: run_id is required for approve"
+    assert await tool.execute(action="approve") == "Error: production context is required for approve"
     assert await tool.execute(action="qa") == "Error: question is required for qa"
     assert await tool.execute(action="status") == "Error: run_id is required for status"
 

@@ -2,7 +2,7 @@
 
 This document defines the target deployment path for turning Lark Meeting Agent from a lifecycle local MVP into a production Feishu bot.
 
-Current status: documentation/spec stage. Do not claim production deployment until a real Feishu app has been configured and smoke-tested.
+Current status: production Feishu channel glue is implemented and fake-tested. Do not claim real production deployment until a real Feishu app has been configured and smoke-tested.
 
 ## Production Bar
 
@@ -78,17 +78,15 @@ Production must not use wildcard `allowFrom` unless explicitly intended and docu
 
 ## Meeting Agent Config
 
-The implementation phase should add meeting-agent config for:
+Meeting-agent policy supports:
 
 - allowed users,
 - allowed chat IDs,
 - admin users,
 - write approvers,
-- dry-run default,
-- global writes enabled/disabled,
-- provider mode,
-- storage backend,
-- audit settings.
+- live meeting approvers.
+
+Denied attempts are audited with sanitized sender/chat/message metadata. Dangerous direct tool actions such as write approval and visible live join/leave require production sender context and the matching approver role.
 
 ## Startup
 
@@ -120,7 +118,16 @@ Production target:
 
 ## Deployment Verification
 
-Before claiming production deployment:
+Implemented and fake-tested:
+
+1. Feishu message payloads are mapped to `MeetingBotContext` with sender, chat, chat type, mention state, text, and message ID.
+2. Allowed DM requests can route to `/meeting process`.
+3. Group messages without a mention or `/meeting` command are ignored.
+4. Unknown users are denied and audited.
+5. Non-approvers cannot approve writes.
+6. Direct `lark_meeting` tool calls cannot approve writes or perform visible live join/leave without production context.
+
+Before claiming real production deployment:
 
 1. `nanobot gateway` starts with Feishu channel enabled.
 2. Allowed DM sends `/meeting status` and receives a response.

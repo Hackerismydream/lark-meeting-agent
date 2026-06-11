@@ -183,6 +183,8 @@ async def test_lark_meeting_tool_routes_live_lark_listener_actions(tmp_path: Pat
             provider_mode="fake",
             meeting_number="123456789",
             approve_visible_join=True,
+            sender_id="ou_live",
+            live_approvers=["ou_live"],
         )
     )
     poll = json.loads(
@@ -199,6 +201,8 @@ async def test_lark_meeting_tool_routes_live_lark_listener_actions(tmp_path: Pat
             provider_mode="fake",
             meeting_ref_value=session["meeting_id"],
             approve_visible_leave=True,
+            sender_id="ou_live",
+            live_approvers=["ou_live"],
         )
     )
 

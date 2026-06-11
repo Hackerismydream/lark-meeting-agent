@@ -69,6 +69,7 @@ class LarkMeetingTool(Tool):
                 "allowed_chat_ids": {"type": "array", "items": {"type": "string"}},
                 "admin_users": {"type": "array", "items": {"type": "string"}},
                 "write_approvers": {"type": "array", "items": {"type": "string"}},
+                "live_approvers": {"type": "array", "items": {"type": "string"}},
                 "meeting_ref_type": {
                     "type": "string",
                     "enum": ["latest_ended", "meeting_id", "minute_token", "transcript_file"],
@@ -118,6 +119,42 @@ class LarkMeetingTool(Tool):
             "required": ["action"],
         }
 
+    def _policy_from_kwargs(self, kwargs: dict[str, Any]) -> MeetingAgentAccessPolicy:
+        return MeetingAgentAccessPolicy(
+            allowed_users=set(kwargs.get("allowed_users") or []),
+            allowed_chat_ids=set(kwargs.get("allowed_chat_ids") or []),
+            admin_users=set(kwargs.get("admin_users") or []),
+            write_approvers=set(kwargs.get("write_approvers") or []),
+            live_approvers=set(kwargs.get("live_approvers") or []),
+        )
+
+    def _context_from_kwargs(self, kwargs: dict[str, Any]) -> MeetingBotContext | None:
+        sender_id = kwargs.get("sender_id") or kwargs.get("sender_open_id")
+        if not sender_id:
+            return None
+        return MeetingBotContext(
+            sender_id=str(sender_id),
+            chat_id=kwargs.get("chat_id"),
+            chat_type=kwargs.get("bot_chat_type") or "dm",
+            mentioned=bool(kwargs.get("mentioned", False)),
+        )
+
+    def _require_write_approver(self, kwargs: dict[str, Any]) -> str | None:
+        context = self._context_from_kwargs(kwargs)
+        if context is None:
+            return "Error: production context is required for approve"
+        if not self._policy_from_kwargs(kwargs).can_approve(context):
+            return "Error: sender is not allowed to approve write operations"
+        return None
+
+    def _require_live_approver(self, kwargs: dict[str, Any]) -> str | None:
+        context = self._context_from_kwargs(kwargs)
+        if context is None:
+            return "Error: production context is required for live meeting control"
+        if not self._policy_from_kwargs(kwargs).can_control_live(context):
+            return "Error: sender is not allowed to approve live meeting control"
+        return None
+
     async def execute(self, **kwargs: Any) -> str:
         action = kwargs.get("action")
         provider_mode = kwargs.get("provider_mode") or "fake"
@@ -130,12 +167,7 @@ class LarkMeetingTool(Tool):
                 return "Error: message_text is required for bot_message"
             if not sender_id:
                 return "Error: sender_id is required for bot_message"
-            policy = MeetingAgentAccessPolicy(
-                allowed_users=set(kwargs.get("allowed_users") or []),
-                allowed_chat_ids=set(kwargs.get("allowed_chat_ids") or []),
-                admin_users=set(kwargs.get("admin_users") or []),
-                write_approvers=set(kwargs.get("write_approvers") or []),
-            )
+            policy = self._policy_from_kwargs(kwargs)
             reply = ProductionMeetingBot(
                 workspace=self.workspace,
                 policy=policy,
@@ -168,6 +200,9 @@ class LarkMeetingTool(Tool):
             )
             return result.model_dump_json(indent=2)
         if action == "live_join":
+            policy_error = self._require_live_approver(kwargs)
+            if policy_error:
+                return policy_error
             meeting_number = kwargs.get("meeting_number")
             if not meeting_number:
                 return "Error: meeting_number is required for live_join"
@@ -193,6 +228,9 @@ class LarkMeetingTool(Tool):
             )
             return result.model_dump_json(indent=2)
         if action == "live_leave":
+            policy_error = self._require_live_approver(kwargs)
+            if policy_error:
+                return policy_error
             meeting_id = kwargs.get("meeting_ref_value") or kwargs.get("meeting_id")
             if not meeting_id:
                 return "Error: meeting_ref_value is required for live_leave"
@@ -247,6 +285,9 @@ class LarkMeetingTool(Tool):
             )
             return result.model_dump_json(indent=2)
         if action == "approve":
+            policy_error = self._require_write_approver(kwargs)
+            if policy_error:
+                return policy_error
             run_id = kwargs.get("run_id")
             if not run_id:
                 return "Error: run_id is required for approve"
