@@ -108,6 +108,8 @@ The request must include explicit `operation_ids`. A vague "approve all" action 
 - Backend stale-run, provider-mismatch, already-completed, rejected, or permission errors must be displayed and must not trigger silent retry.
 - The app does not bypass backend access policy.
 
-## V1.1 Phase 1 Status
+## Companion API Status
 
-This phase defines the product/API/security contract. It does not implement the backend Companion API or Swift app yet.
+The backend Companion API adapter is implemented in `nanobot/meeting/companion_api.py` with typed models in `nanobot/meeting/companion_models.py`. It is an in-process adapter that can be mounted by a future HTTP layer.
+
+The Swift app is not implemented yet.
