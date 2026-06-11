@@ -51,7 +51,7 @@ struct StatusView: View {
                         await viewModel.refreshStatus()
                     }
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label("刷新", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.bordered)
             }
@@ -96,13 +96,13 @@ struct StatusView: View {
     private var statusText: String {
         switch viewModel.connectionState {
         case .disconnected:
-            return "Disconnected"
+            return "未连接"
         case .connecting:
-            return "Connecting..."
+            return "连接中..."
         case .connected(let status):
-            return "Connected: \(status.environmentSummary)"
+            return "已连接：\(status.environmentSummary)"
         case .failed:
-            return "Disconnected"
+            return "未连接"
         }
     }
 
@@ -129,13 +129,13 @@ enum WorkspaceSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .upload:
-            return "Upload"
+            return "上传"
         case .approvals:
-            return "Approvals"
+            return "审批"
         case .search:
-            return "Search"
+            return "搜索"
         case .preBrief:
-            return "Pre-brief"
+            return "会前简报"
         }
     }
 }

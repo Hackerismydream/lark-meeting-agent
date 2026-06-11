@@ -41,10 +41,10 @@ struct ApprovalInboxView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
-                    Text("Approvals")
+                    Text("审批")
                         .font(.system(size: 22, weight: .semibold))
                     if viewModel.pendingOperationCount > 0 {
-                        Text("Pending")
+                        Text("待审批")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.orange)
                             .padding(.horizontal, 9)
@@ -57,7 +57,7 @@ struct ApprovalInboxView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Text("Review and approve or reject pending operations.")
+                Text("检查待写入飞书的操作，确认无误后再批准。")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
@@ -67,7 +67,7 @@ struct ApprovalInboxView: View {
                     await viewModel.refresh()
                 }
             } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
+                Label("刷新", systemImage: "arrow.clockwise")
             }
             .buttonStyle(.bordered)
         }
@@ -78,9 +78,9 @@ struct ApprovalInboxView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 38))
                 .foregroundStyle(.green)
-            Text("No pending approvals")
+            Text("暂无待审批")
                 .font(.system(size: 15, weight: .medium))
-            Text("Upload a transcript first. Generated Docs, Tasks, or IM operations will appear here for review.")
+            Text("先上传会议转写。生成的文档、任务或群消息写入计划会在这里等待你确认。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -123,7 +123,7 @@ private struct ApprovalOperationRow: View {
             iconBox
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Write Plan")
+                    Text("写入计划")
                         .font(.system(size: 16, weight: .semibold))
                     Spacer()
                     Text(timeLabel)
@@ -137,7 +137,7 @@ private struct ApprovalOperationRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                 HStack(spacing: 8) {
-                    Label("Evidence \(evidenceCount)", systemImage: "paperclip")
+                    Label("证据 \(evidenceCount)", systemImage: "paperclip")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 10)
@@ -156,7 +156,7 @@ private struct ApprovalOperationRow: View {
                 Button {
                     approve()
                 } label: {
-                    Label("Approve", systemImage: "checkmark")
+                    Label("批准", systemImage: "checkmark")
                         .foregroundStyle(.green)
                 }
                 .buttonStyle(.bordered)
@@ -165,7 +165,7 @@ private struct ApprovalOperationRow: View {
                 Button {
                     reject()
                 } label: {
-                    Label("Reject", systemImage: "xmark")
+                    Label("拒绝", systemImage: "xmark")
                         .foregroundStyle(.red)
                 }
                 .buttonStyle(.bordered)
@@ -206,9 +206,9 @@ private struct ApprovalOperationRow: View {
 
     private var operationSubtitle: String {
         if !operation.target.isEmpty {
-            return "Target: \(render(operation.target))"
+            return "目标：\(render(operation.target))"
         }
-        return "Run \(runID)"
+        return "运行 \(runID)"
     }
 
     private var evidenceCount: Int {
@@ -217,10 +217,25 @@ private struct ApprovalOperationRow: View {
     }
 
     private var timeLabel: String {
-        operation.approvalStatus == "pending" ? "Pending" : operation.approvalStatus.capitalized
+        operation.approvalStatus == "pending" ? "待审批" : operation.approvalStatus.localizedApprovalStatus
     }
 
     private func render(_ values: [String: JSONValue]) -> String {
         values.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: ", ")
+    }
+}
+
+private extension String {
+    var localizedApprovalStatus: String {
+        switch self {
+        case "approved":
+            return "已批准"
+        case "rejected":
+            return "已拒绝"
+        case "pending":
+            return "待审批"
+        default:
+            return self
+        }
     }
 }

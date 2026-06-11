@@ -49,7 +49,7 @@ public final class ApprovalInboxViewModel: ObservableObject {
                 await notificationService.notifyPendingApprovals(count: pendingOperationCount)
             }
         } catch {
-            message = "Unable to load pending approvals."
+            message = "无法加载待审批项。"
         }
         isLoading = false
     }
@@ -66,18 +66,18 @@ public final class ApprovalInboxViewModel: ObservableObject {
     public func approveSelected(runID: String) async {
         let operationIDs = selectedOperationIDsForRun(runID)
         guard !operationIDs.isEmpty else {
-            message = "Select at least one operation before approving."
+            message = "请至少选择一个操作后再批准。"
             return
         }
         isLoading = true
         do {
             try await makeClient().approve(runID: runID, operationIDs: operationIDs)
             selectedOperationIDs.subtract(operationIDs.map { Self.selectionKey(runID: runID, operationID: $0) })
-            message = "Approved \(operationIDs.count) operation(s)."
+            message = "已批准 \(operationIDs.count) 个操作。"
             await refresh()
             NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
-            message = "Approval failed."
+            message = "批准失败。"
         }
         isLoading = false
     }
@@ -87,11 +87,11 @@ public final class ApprovalInboxViewModel: ObservableObject {
         do {
             try await makeClient().approve(runID: runID, operationIDs: [operationID])
             selectedOperationIDs.remove(Self.selectionKey(runID: runID, operationID: operationID))
-            message = "Approved \(operationID)."
+            message = "已批准 \(operationID)。"
             await refresh()
             NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
-            message = "Approval failed."
+            message = "批准失败。"
         }
         isLoading = false
     }
@@ -99,13 +99,13 @@ public final class ApprovalInboxViewModel: ObservableObject {
     public func reject(runID: String) async {
         isLoading = true
         do {
-            try await makeClient().reject(runID: runID, reason: "Rejected from macOS companion app")
+            try await makeClient().reject(runID: runID, reason: "从 macOS companion app 拒绝")
             selectedOperationIDs.subtract(selectedOperationIDsForRun(runID).map { Self.selectionKey(runID: runID, operationID: $0) })
-            message = "Rejected run \(runID)."
+            message = "已拒绝运行 \(runID)。"
             await refresh()
             NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
-            message = "Reject failed."
+            message = "拒绝失败。"
         }
         isLoading = false
     }

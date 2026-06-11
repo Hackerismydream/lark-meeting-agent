@@ -7,7 +7,7 @@ public struct AppSettings: Equatable, Sendable {
 
     public init(
         apiBaseURL: URL = URL(string: "http://127.0.0.1:8765")!,
-        environmentLabel: String = "Local",
+        environmentLabel: String = "本地",
         notificationsEnabled: Bool = true
     ) {
         self.apiBaseURL = apiBaseURL
@@ -27,7 +27,7 @@ public final class AppSettingsStore {
         let urlString = defaults.string(forKey: "apiBaseURL") ?? "http://127.0.0.1:8765"
         return AppSettings(
             apiBaseURL: URL(string: urlString) ?? URL(string: "http://127.0.0.1:8765")!,
-            environmentLabel: defaults.string(forKey: "environmentLabel") ?? "Local",
+            environmentLabel: defaults.string(forKey: "environmentLabel") ?? "本地",
             notificationsEnabled: defaults.object(forKey: "notificationsEnabled") as? Bool ?? true
         )
     }

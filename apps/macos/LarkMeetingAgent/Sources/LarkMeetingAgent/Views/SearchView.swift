@@ -8,14 +8,14 @@ struct SearchView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Search")
+                Text("搜索")
                     .font(.system(size: 22, weight: .semibold))
-                Text("Ask questions after you have uploaded or processed meeting transcripts.")
+                Text("上传或处理会议转写后，在这里追问历史会议。")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: 10) {
-                TextField("Ask across meetings", text: $question)
+                TextField("问一个和会议有关的问题", text: $question)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit {
                         Task {
@@ -27,7 +27,7 @@ struct SearchView: View {
                         await viewModel.search(question: question)
                     }
                 } label: {
-                    Label("Search memory", systemImage: "magnifyingglass")
+                    Label("搜索记忆", systemImage: "magnifyingglass")
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -45,14 +45,14 @@ struct SearchView: View {
             HStack(spacing: 8) {
                 Image(systemName: answer.sufficient ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(answer.sufficient ? .green : .orange)
-                Text(answer.sufficient ? "Answer" : "Insufficient evidence")
+                Text(answer.sufficient ? "回答" : "证据不足")
                     .font(.system(size: 15, weight: .semibold))
             }
-            Text(answer.sufficient ? answer.answer : "No source-backed answer was found for this question.")
+            Text(answer.sufficient ? answer.answer : "没有找到足够证据来回答这个问题。")
                 .font(.system(size: 14))
             if !answer.sources.isEmpty {
                 Divider()
-                Text("Sources")
+                Text("来源")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)

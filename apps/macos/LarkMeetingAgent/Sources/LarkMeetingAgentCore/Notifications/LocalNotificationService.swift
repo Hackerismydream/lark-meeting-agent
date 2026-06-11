@@ -22,8 +22,8 @@ public struct LocalNotificationService: NotificationScheduling, @unchecked Senda
             return
         }
         let content = UNMutableNotificationContent()
-        content.title = "Lark Meeting Agent"
-        content.body = "\(count) pending approval item(s) need review."
+        content.title = "飞书会议智能体"
+        content.body = "\(count) 个待审批项需要处理。"
         content.sound = .default
         let request = UNNotificationRequest(identifier: "pending-approvals", content: content, trigger: nil)
         try? await center.add(request)
@@ -34,7 +34,7 @@ public struct LocalNotificationService: NotificationScheduling, @unchecked Senda
             return
         }
         let content = UNMutableNotificationContent()
-        content.title = "Pre-brief ready"
+        content.title = "会前简报已生成"
         content.body = title
         content.sound = .default
         let request = UNNotificationRequest(identifier: "prebrief-ready-\(UUID().uuidString)", content: content, trigger: nil)

@@ -9,10 +9,10 @@ struct RunTraceView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Runs")
+            Text("运行记录")
                 .font(.system(size: 15, weight: .semibold))
             if runs.isEmpty {
-                Text("No runs from backend")
+                Text("暂无运行记录")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -23,7 +23,7 @@ struct RunTraceView: View {
                         HStack {
                             Image(systemName: run.status == "completed" ? "checkmark.circle.fill" : "clock")
                                 .foregroundStyle(run.status == "completed" ? .green : .orange)
-                            Text("\(run.runID) - \(run.status)")
+                            Text("\(run.runID) - \(run.status.localizedRunStatus)")
                                 .lineLimit(1)
                             Spacer()
                         }
@@ -34,28 +34,28 @@ struct RunTraceView: View {
             }
             if let selectedRun {
                 Divider()
-                Text("Run \(selectedRun.runID)")
+                Text("运行 \(selectedRun.runID)")
                     .font(.subheadline)
-                Text("Status: \(selectedRun.status)")
+                Text("状态：\(selectedRun.status.localizedRunStatus)")
                     .font(.caption)
                 ForEach(selectedRun.errors, id: \.self) { error in
-                    Text("Error: \(error)")
+                    Text("错误：\(error)")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
                 if let operations = selectedRun.writePlan?.operations, !operations.isEmpty {
-                    Text("Write results")
+                    Text("写入结果")
                         .font(.caption)
                         .fontWeight(.semibold)
                     ForEach(operations) { operation in
-                        Text("\(operation.operationID): \(operation.approvalStatus) / \(operation.executionStatus)")
+                        Text("\(operation.operationID)：\(operation.approvalStatus.localizedApprovalStatus) / \(operation.executionStatus.localizedExecutionStatus)")
                             .font(.caption)
                     }
                 }
             }
             if let trace {
                 Divider()
-                Text("\(trace.workflow) trace")
+                Text("\(trace.workflow) 运行轨迹")
                     .font(.caption)
                     .fontWeight(.semibold)
                 ForEach(trace.events) { event in
@@ -85,5 +85,50 @@ struct RunTraceView: View {
 
     private func render(_ values: [String: JSONValue]) -> String {
         values.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: ", ")
+    }
+}
+
+private extension String {
+    var localizedRunStatus: String {
+        switch self {
+        case "completed":
+            return "已完成"
+        case "approval_required":
+            return "待审批"
+        case "failed":
+            return "失败"
+        case "running":
+            return "运行中"
+        default:
+            return self
+        }
+    }
+
+    var localizedApprovalStatus: String {
+        switch self {
+        case "approved":
+            return "已批准"
+        case "rejected":
+            return "已拒绝"
+        case "pending":
+            return "待审批"
+        default:
+            return self
+        }
+    }
+
+    var localizedExecutionStatus: String {
+        switch self {
+        case "completed":
+            return "已完成"
+        case "skipped":
+            return "已跳过"
+        case "pending":
+            return "待执行"
+        case "failed":
+            return "失败"
+        default:
+            return self
+        }
     }
 }

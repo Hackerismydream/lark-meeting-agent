@@ -9,14 +9,14 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            TextField("API Base URL", text: $apiBaseURL)
-            TextField("Environment", text: $environmentLabel)
-            Toggle("Notifications", isOn: $notificationsEnabled)
+            TextField("API 地址", text: $apiBaseURL)
+            TextField("环境", text: $environmentLabel)
+            Toggle("通知", isOn: $notificationsEnabled)
             if environmentLabel.localizedCaseInsensitiveContains("prod") {
-                Text("Production backend: approvals will affect real collaboration systems after backend confirmation.")
+                Text("生产后端：审批后的写操作会在后端确认后影响真实协作系统。")
                     .foregroundStyle(.orange)
             }
-            Button("Save") {
+            Button("保存") {
                 if let url = URL(string: apiBaseURL) {
                     viewModel.saveSettings(apiBaseURL: url, environmentLabel: environmentLabel, notificationsEnabled: notificationsEnabled)
                 }

@@ -24,7 +24,7 @@ public final class SearchUploadViewModel: ObservableObject {
 
     public func search(question: String) async {
         guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            message = "Enter a question before searching."
+            message = "请输入问题后再搜索。"
             return
         }
         isLoading = true
@@ -32,14 +32,14 @@ public final class SearchUploadViewModel: ObservableObject {
         do {
             answer = try await makeClient().search(question: question)
         } catch {
-            message = "Search failed."
+            message = "搜索失败。"
         }
         isLoading = false
     }
 
     public func uploadTranscriptFile(url: URL, createDoc: Bool, createTasks: Bool, sendMessage: Bool, chatID: String?) async {
         guard Self.allowedTranscriptExtensions.contains(url.pathExtension.lowercased()) else {
-            message = "Only .txt, .md, and .json transcript files are supported."
+            message = "仅支持 .txt、.md 和 .json 会议转写文件。"
             return
         }
         isLoading = true
@@ -62,7 +62,7 @@ public final class SearchUploadViewModel: ObservableObject {
             )
             NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
-            message = "Transcript upload failed."
+            message = "会议转写上传失败。"
         }
         isLoading = false
     }

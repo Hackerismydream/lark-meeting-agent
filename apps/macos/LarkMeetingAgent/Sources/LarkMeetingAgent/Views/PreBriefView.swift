@@ -35,12 +35,12 @@ struct PreBriefView: View {
                     .padding(.vertical, 4)
                 }
                 if !preBrief.warnings.isEmpty {
-                    Text("Warnings: \(preBrief.warnings.joined(separator: ", "))")
+                    Text("提醒：\(preBrief.warnings.joined(separator: "，"))")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
             } else {
-                Text("Generate a pre-brief from the backend.")
+                Text("输入会议主题或项目名称，生成会前简报。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

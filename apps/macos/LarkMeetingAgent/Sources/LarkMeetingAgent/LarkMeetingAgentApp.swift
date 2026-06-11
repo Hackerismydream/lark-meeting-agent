@@ -6,10 +6,10 @@ struct LarkMeetingAgentApp: App {
     @StateObject private var viewModel = StatusViewModel()
 
     var body: some Scene {
-        WindowGroup("Lark Meeting Agent") {
+        WindowGroup("飞书会议智能体") {
             StatusView(viewModel: viewModel)
         }
-        MenuBarExtra("Lark Meeting Agent", systemImage: "waveform.and.person.filled") {
+        MenuBarExtra("飞书会议智能体", systemImage: "waveform.and.person.filled") {
             StatusView(viewModel: viewModel)
         }
         Settings {

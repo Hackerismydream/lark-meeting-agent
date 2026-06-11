@@ -12,9 +12,9 @@ struct PreBriefTracePanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Pre-brief")
+                Text("会前简报")
                     .font(.system(size: 22, weight: .semibold))
-                Text("Use existing meeting memory to prepare context before the next meeting. Upload transcripts first if memory is empty.")
+                Text("基于已有会议记忆，为下一场会议准备背景、风险和建议追问。记忆为空时请先上传会议转写。")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
@@ -39,7 +39,7 @@ struct PreBriefTracePanelView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Button("Refresh meetings and runs") {
+            Button("刷新会议和运行记录") {
                 Task {
                     await viewModel.refreshMeetingsAndRuns()
                 }
@@ -57,19 +57,19 @@ struct PreBriefTracePanelView: View {
 
     private var preBriefForm: some View {
         VStack(alignment: .leading, spacing: 6) {
-            labeledTextField("Meeting query", placeholder: "project review, customer name, or topic", text: $query)
+            labeledTextField("会议查询", placeholder: "项目评审、客户名称或讨论主题", text: $query)
             HStack(spacing: 10) {
-                labeledTextField("Meeting ID", placeholder: "optional", text: $meetingID)
-                labeledTextField("Meeting type", placeholder: "general", text: $meetingType)
+                labeledTextField("会议 ID", placeholder: "可选", text: $meetingID)
+                labeledTextField("会议类型", placeholder: "通用", text: $meetingType)
             }
             HStack(spacing: 10) {
-                labeledTextField("Project", placeholder: "optional", text: $project)
-                labeledTextField("Customer", placeholder: "optional", text: $customer)
+                labeledTextField("项目", placeholder: "可选", text: $project)
+                labeledTextField("客户", placeholder: "可选", text: $customer)
             }
             Button {
                 generatePreBrief()
             } label: {
-                Label("Generate pre-brief", systemImage: "sparkles")
+                Label("生成会前简报", systemImage: "sparkles")
             }
             .buttonStyle(.borderedProminent)
             .padding(.top, 4)

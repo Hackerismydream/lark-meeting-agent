@@ -13,25 +13,25 @@ struct UploadTranscriptView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Start here")
+                Text("从这里开始")
                     .font(.system(size: 22, weight: .semibold))
-                Text("Import a meeting transcript, then review the generated write plan before anything is written.")
+                Text("导入会议转写，先预览生成的写入计划，再决定是否写回飞书。")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
             workflowGuide
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("Create doc preview", isOn: $createDoc)
-                Toggle("Create task previews", isOn: $createTasks)
-                Toggle("Prepare IM preview", isOn: $sendMessage)
+                Toggle("生成文档预览", isOn: $createDoc)
+                Toggle("生成任务预览", isOn: $createTasks)
+                Toggle("生成群消息预览", isOn: $sendMessage)
             }
-            TextField("Chat ID", text: $chatID)
+            TextField("群聊 ID", text: $chatID)
                 .textFieldStyle(.roundedBorder)
                 .disabled(!sendMessage)
             Button {
                 importerPresented = true
             } label: {
-                Label("Choose .txt/.md/.json", systemImage: "square.and.arrow.up")
+                Label("选择 .txt/.md/.json", systemImage: "square.and.arrow.up")
             }
             .buttonStyle(.borderedProminent)
             .fileImporter(
@@ -56,14 +56,14 @@ struct UploadTranscriptView: View {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
-                        Text("Run \(upload.runID)")
+                        Text("运行 \(upload.runID)")
                             .font(.system(size: 14, weight: .medium))
                     }
-                    Text(upload.status)
+                    Text(upload.status.localizedUploadStatus)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     ForEach(upload.errors, id: \.self) { error in
-                        Text("Error: \(error)")
+                        Text("错误：\(error)")
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
@@ -84,9 +84,9 @@ struct UploadTranscriptView: View {
 
     private var workflowGuide: some View {
         VStack(alignment: .leading, spacing: 10) {
-            WorkflowStep(number: "1", title: "Choose a transcript", detail: "Use a .txt, .md, or .json meeting transcript. Audio is not supported in this version.")
-            WorkflowStep(number: "2", title: "Review approvals", detail: "The app creates a dry-run Write Plan. Nothing is sent to Lark until you approve it.")
-            WorkflowStep(number: "3", title: "Ask or prepare", detail: "After upload, use Search for source-grounded QA or Pre-brief for context before the next meeting.")
+            WorkflowStep(number: "1", title: "选择会议转写", detail: "支持 .txt、.md 或 .json 会议转写。本版本不处理音频。")
+            WorkflowStep(number: "2", title: "审批写入计划", detail: "系统只生成 dry-run 预览；你审批前不会写入飞书。")
+            WorkflowStep(number: "3", title: "搜索或准备下一场会议", detail: "上传后可用搜索做带来源的问答，也可用会前简报准备下一场会议。")
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -98,6 +98,23 @@ struct UploadTranscriptView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
         )
+    }
+}
+
+private extension String {
+    var localizedUploadStatus: String {
+        switch self {
+        case "completed":
+            return "已完成"
+        case "approval_required":
+            return "待审批"
+        case "failed":
+            return "失败"
+        case "running":
+            return "运行中"
+        default:
+            return self
+        }
     }
 }
 

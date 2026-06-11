@@ -41,7 +41,7 @@ public final class StatusViewModel: ObservableObject {
             connectionState = .connected(status)
         } catch {
             pendingApprovalCount = 0
-            connectionState = .failed("Unable to reach Agent Service")
+            connectionState = .failed("无法连接 Agent 服务")
         }
     }
 

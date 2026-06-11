@@ -45,7 +45,7 @@ public final class PreBriefTraceViewModel: ObservableObject {
             meetingsSource = response.source
             runs = try await makeClient().runs()
         } catch {
-            message = "Unable to load meetings or runs."
+            message = "无法加载会议或运行记录。"
         }
         isLoading = false
     }
@@ -66,7 +66,7 @@ public final class PreBriefTraceViewModel: ObservableObject {
                 await notificationService.notifyPreBriefAvailable(title: brief.goal)
             }
         } catch {
-            message = "Unable to generate pre-brief."
+            message = "无法生成会前简报。"
         }
         isLoading = false
     }
@@ -78,7 +78,7 @@ public final class PreBriefTraceViewModel: ObservableObject {
             selectedRun = try await makeClient().run(runID: runID)
             trace = try await makeClient().trace(runID: runID)
         } catch {
-            message = "Unable to load run trace."
+            message = "无法加载运行轨迹。"
         }
         isLoading = false
     }
