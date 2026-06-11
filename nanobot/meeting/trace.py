@@ -45,6 +45,6 @@ class RunTraceWriter:
     def _redact(value: str) -> str:
         redacted = re.sub(r"sk-[A-Za-z0-9_\-]+", "[REDACTED]", value)
         redacted = re.sub(r"(?i)(app_secret|access_token|refresh_token|authorization|cookie)=\S+", r"\1=[REDACTED]", redacted)
-        redacted = re.sub(r"(?i)Bearer\s+\S+", "Bearer [REDACTED]", redacted)
+        redacted = re.sub(r"(?i)Bearer\s+[A-Za-z0-9_.\-]+", "Bearer [REDACTED]", redacted)
         redacted = re.sub(r"https://[^\s]*(?:token|secret|auth)[^\s]*", "https://[REDACTED]", redacted)
         return redacted

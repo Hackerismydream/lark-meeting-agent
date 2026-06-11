@@ -115,6 +115,7 @@ def test_production_config_validation_flags_unsafe_defaults() -> None:
         "exec_enabled",
         "workspace_unrestricted",
         "missing_approvers",
+        "audit_disabled",
     }
 
 

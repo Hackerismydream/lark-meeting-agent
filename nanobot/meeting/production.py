@@ -32,6 +32,7 @@ from nanobot.meeting.schemas import (
     RunStatus,
     ToolCallAuditEvent,
 )
+from nanobot.meeting.security import validate_admin_config
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
 CommandAction = Literal[
@@ -96,6 +97,9 @@ class MeetingAgentAccessPolicy:
     group_requires_mention_or_command: bool = True
 
     def is_allowed(self, context: MeetingBotContext) -> bool:
+        return self.can_use_bot(context)
+
+    def can_use_bot(self, context: MeetingBotContext) -> bool:
         if context.sender_id in self.admin_users:
             return True
         if (
@@ -108,11 +112,26 @@ class MeetingAgentAccessPolicy:
             return False
         return True
 
+    def can_process(self, context: MeetingBotContext) -> bool:
+        return self.can_use_bot(context)
+
     def can_approve(self, context: MeetingBotContext) -> bool:
+        return self.can_approve_writes(context)
+
+    def can_approve_writes(self, context: MeetingBotContext) -> bool:
         return context.sender_id in self.admin_users or context.sender_id in self.write_approvers
 
     def can_control_live(self, context: MeetingBotContext) -> bool:
         return context.sender_id in self.admin_users or context.sender_id in self.live_approvers
+
+    def can_live_join(self, context: MeetingBotContext) -> bool:
+        return self.can_control_live(context)
+
+    def can_live_leave(self, context: MeetingBotContext) -> bool:
+        return self.can_control_live(context)
+
+    def can_admin(self, context: MeetingBotContext) -> bool:
+        return context.sender_id in self.admin_users
 
     def should_ignore_group_message(self, context: MeetingBotContext, text: str) -> bool:
         if context.chat_type != "group" or not self.group_requires_mention_or_command:
@@ -196,24 +215,7 @@ class ProductionConfigWarning(BaseModel):
 
 
 def validate_production_config(config: dict) -> list[ProductionConfigWarning]:
-    warnings: list[ProductionConfigWarning] = []
-    channels = config.get("channels", {})
-    feishu = channels.get("feishu", {}) if isinstance(channels, dict) else {}
-    allow_from = feishu.get("allowFrom", [])
-    if "*" in allow_from:
-        warnings.append(ProductionConfigWarning(code="wildcard_allow_from", message="Feishu allowFrom contains wildcard"))
-    tools = config.get("tools", {})
-    exec_cfg = tools.get("exec", {}) if isinstance(tools, dict) else {}
-    if exec_cfg.get("enable") is not False:
-        warnings.append(ProductionConfigWarning(code="exec_enabled", message="Production config should set tools.exec.enable=false"))
-    if tools.get("restrictToWorkspace") is not True:
-        warnings.append(
-            ProductionConfigWarning(code="workspace_unrestricted", message="Production config should set tools.restrictToWorkspace=true")
-        )
-    meeting = config.get("meetingAgent", {})
-    if not meeting.get("writeApprovers"):
-        warnings.append(ProductionConfigWarning(code="missing_approvers", message="No write approvers configured"))
-    return warnings
+    return [ProductionConfigWarning(code=finding.code, message=f"{finding.message} Action: {finding.action}") for finding in validate_admin_config(config)]
 
 
 def parse_meeting_command(text: str) -> MeetingBotCommand:

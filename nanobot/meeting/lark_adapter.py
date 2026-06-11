@@ -404,6 +404,7 @@ class LarkToolAdapter:
             redacted,
         )
         redacted = re.sub(r"(?i)Bearer\s+[A-Za-z0-9_.\-]+", "Bearer [REDACTED]", redacted)
+        redacted = re.sub(r"https://[^\s\"']*(?:token|secret|auth)[^\s\"']*", "https://[REDACTED]", redacted)
         return redacted
 
     def _classify(self, operation: str) -> ReadOrWrite:

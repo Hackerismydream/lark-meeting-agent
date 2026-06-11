@@ -9,7 +9,10 @@ Use this checklist before running Lark Meeting Agent as a production Feishu bot.
 - [ ] Meeting-agent allowed users are configured.
 - [ ] Allowed chat IDs are configured for group use.
 - [ ] Admin users are explicit.
+- [ ] Processing users are explicit when different from allowed users.
 - [ ] Write approvers are explicit.
+- [ ] Live join approvers are explicit.
+- [ ] Live leave approvers are explicit.
 - [ ] Non-approvers cannot approve write operations.
 - [ ] Denied access attempts are audited without leaking secrets.
 
@@ -27,6 +30,7 @@ Use this checklist before running Lark Meeting Agent as a production Feishu bot.
 
 - [ ] `tools.exec.enable=false` in production unless explicitly justified.
 - [ ] `tools.restrictToWorkspace=true`.
+- [ ] `meetingAgent.audit.enabled=true`.
 - [ ] Shell access is not used for Lark operations.
 - [ ] Secrets are provided through env vars or a secret manager.
 - [ ] No secrets are committed to docs, tests, fixtures, logs, traces, or config.
@@ -48,7 +52,13 @@ Use this checklist before running Lark Meeting Agent as a production Feishu bot.
 - [ ] Approval state persists across restarts.
 - [ ] Audit events persist across restarts.
 - [ ] Storage transactions protect approval state changes.
+- [ ] Data retention period is documented.
+- [ ] Deletion procedure is documented and tested.
 - [ ] JSONL local backend remains for dev/test only unless explicitly selected.
+
+## Demo vs Production
+
+Demo config may use fake providers, local JSONL, and fixture transcripts. Production config must use explicit users/chats, audit enabled, workspace restriction, disabled generic exec, and SQLite or a later approved production store.
 
 ## Real Lark Gate
 
