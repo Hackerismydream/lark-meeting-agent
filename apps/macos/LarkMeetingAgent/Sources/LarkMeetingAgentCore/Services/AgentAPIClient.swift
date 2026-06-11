@@ -39,6 +39,47 @@ public final class AgentAPIClient: Sendable {
         throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
     }
 
+    public func meetingsToday() async throws -> MeetingsTodayResponse {
+        let envelope: APIEnvelope<MeetingsTodayResponse> = try await get("/v1/meetings/today")
+        if let data = envelope.data, envelope.ok {
+            return data
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
+    public func preBrief(query: String?, meetingID: String?, meetingType: String, project: String?, customer: String?) async throws -> PreBrief {
+        let body = PreBriefBody(query: query, meetingID: meetingID, meetingType: meetingType, project: project, customer: customer)
+        let envelope: APIEnvelope<PreBrief> = try await post("/v1/prebrief", body: body)
+        if let data = envelope.data, envelope.ok {
+            return data
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
+    public func runs() async throws -> [RunDetail] {
+        let envelope: APIEnvelope<RunsResponse> = try await get("/v1/runs")
+        if let data = envelope.data, envelope.ok {
+            return data.items
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
+    public func run(runID: String) async throws -> RunDetail {
+        let envelope: APIEnvelope<RunDetail> = try await get("/v1/runs/\(runID)")
+        if let data = envelope.data, envelope.ok {
+            return data
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
+    public func trace(runID: String) async throws -> RunTrace {
+        let envelope: APIEnvelope<RunTrace> = try await get("/v1/runs/\(runID)/trace")
+        if let data = envelope.data, envelope.ok {
+            return data
+        }
+        throw AgentAPIError.api(envelope.error ?? APIError(code: "unknown", message: "Unknown API error"))
+    }
+
     public func approve(runID: String, operationIDs: [String]) async throws {
         let body = ApproveBody(operationIDs: operationIDs)
         let envelope: APIEnvelope<JSONValue> = try await post("/v1/runs/\(runID)/approve", body: body)
@@ -96,4 +137,20 @@ private struct ApproveBody: Encodable, Sendable {
 
 private struct RejectBody: Encodable, Sendable {
     let reason: String?
+}
+
+private struct PreBriefBody: Encodable, Sendable {
+    let query: String?
+    let meetingID: String?
+    let meetingType: String
+    let project: String?
+    let customer: String?
+
+    enum CodingKeys: String, CodingKey {
+        case query
+        case meetingID = "meeting_id"
+        case meetingType = "meeting_type"
+        case project
+        case customer
+    }
 }

@@ -40,6 +40,143 @@ public struct PendingWritePlansResponse: Decodable, Equatable, Sendable {
     public let items: [PendingWritePlan]
 }
 
+public struct MeetingsTodayResponse: Decodable, Equatable, Sendable {
+    public let items: [MeetingSummary]
+    public let source: String?
+}
+
+public struct MeetingSummary: Decodable, Identifiable, Equatable, Sendable {
+    public let meetingID: String?
+    public let title: String?
+    public let startTime: String?
+    public let endTime: String?
+
+    public var id: String { meetingID ?? "\(title ?? "untitled")-\(startTime ?? "")" }
+
+    enum CodingKeys: String, CodingKey {
+        case meetingID = "meeting_id"
+        case title
+        case startTime = "start_time"
+        case endTime = "end_time"
+    }
+}
+
+public struct PreBrief: Decodable, Equatable, Sendable {
+    public let runID: String
+    public let meetingType: String
+    public let goal: String
+    public let sections: [PreBriefSection]
+    public let suggestedQuestions: [String]
+    public let warnings: [String]
+    public let tracePath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case runID = "run_id"
+        case meetingType = "meeting_type"
+        case goal
+        case sections
+        case suggestedQuestions = "suggested_questions"
+        case warnings
+        case tracePath = "trace_path"
+    }
+}
+
+public struct PreBriefSection: Decodable, Equatable, Sendable {
+    public let title: String
+    public let bullets: [String]
+    public let sources: [SourceCitation]
+}
+
+public struct SourceCitation: Decodable, Equatable, Sendable {
+    public let meetingID: String?
+    public let segmentID: String?
+    public let kind: String?
+    public let text: String?
+    public let speakerName: String?
+    public let timestamp: String?
+
+    enum CodingKeys: String, CodingKey {
+        case meetingID = "meeting_id"
+        case segmentID = "segment_id"
+        case kind
+        case text
+        case speakerName = "speaker_name"
+        case timestamp
+    }
+}
+
+public struct RunsResponse: Decodable, Equatable, Sendable {
+    public let items: [RunDetail]
+}
+
+public struct RunDetail: Decodable, Identifiable, Equatable, Sendable {
+    public let runID: String
+    public let status: String
+    public let providerMode: String?
+    public let analyzerMode: String?
+    public let writePlan: WritePlanSnapshot?
+    public let errors: [String]
+    public let createdAt: String?
+    public let updatedAt: String?
+
+    public var id: String { runID }
+
+    enum CodingKeys: String, CodingKey {
+        case runID = "run_id"
+        case status
+        case providerMode = "provider_mode"
+        case analyzerMode = "analyzer_mode"
+        case writePlan = "write_plan"
+        case errors
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+public struct WritePlanSnapshot: Decodable, Equatable, Sendable {
+    public let runID: String
+    public let operations: [WriteOperation]
+    public let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case runID = "run_id"
+        case operations
+        case status
+    }
+}
+
+public struct RunTrace: Decodable, Equatable, Sendable {
+    public let runID: String
+    public let workflow: String
+    public let events: [RunTraceEvent]
+    public let createdAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case runID = "run_id"
+        case workflow
+        case events
+        case createdAt = "created_at"
+    }
+}
+
+public struct RunTraceEvent: Decodable, Identifiable, Equatable, Sendable {
+    public let eventID: String
+    public let stage: String
+    public let message: String
+    public let data: [String: JSONValue]
+    public let timestamp: String?
+
+    public var id: String { eventID }
+
+    enum CodingKeys: String, CodingKey {
+        case eventID = "event_id"
+        case stage
+        case message
+        case data
+        case timestamp
+    }
+}
+
 public struct PendingWritePlan: Decodable, Identifiable, Equatable, Sendable {
     public let runID: String
     public let status: String

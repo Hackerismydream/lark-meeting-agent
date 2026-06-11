@@ -47,3 +47,14 @@ def test_macos_approval_inbox_doc_preserves_backend_write_boundary() -> None:
     assert "explicit `operation_ids`" in text
     assert "no vague approve-all button" in text
     assert "never calls Lark APIs" in text
+
+
+def test_macos_prebrief_trace_viewer_doc_is_read_oriented() -> None:
+    text = Path("docs/MACOS_PREBRIEF_TRACE_VIEWER.md").read_text()
+
+    assert "does not run its own Agent loop" in text
+    assert "does not run its own Agent loop, call Lark APIs, or execute hidden writes" in text
+    assert "Trace data is treated as display-only diagnostic context" in text
+    assert "Inspecting traces cannot trigger approval" in text
+    assert "POST /v1/prebrief" in text
+    assert "GET /v1/runs/{run_id}/trace" in text

@@ -18,6 +18,8 @@ struct StatusView: View {
             Divider()
             ApprovalInboxView()
             Divider()
+            PreBriefTracePanelView()
+            Divider()
             Button("Settings...") {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }
@@ -26,7 +28,7 @@ struct StatusView: View {
             }
         }
         .padding()
-        .frame(width: 280)
+        .frame(width: 360)
     }
 
     private var statusText: String {

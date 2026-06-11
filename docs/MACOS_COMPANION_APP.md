@@ -124,13 +124,15 @@ Current shell capabilities:
 - Selected-operation approval through `POST /v1/runs/{run_id}/approve`.
 - Run rejection through `POST /v1/runs/{run_id}/reject`.
 - Local macOS notifications for pending approvals when enabled.
+- Today meeting list from `GET /v1/meetings/today`.
+- Pre-brief generation through `POST /v1/prebrief`.
+- Run status and trace inspection through `GET /v1/runs`, `GET /v1/runs/{run_id}`, and `GET /v1/runs/{run_id}/trace`.
 - Bearer token injection from a credential store.
 - Keychain-backed credential store plus in-memory test store.
 - Core smoke runner covering status decode, bearer token header injection, and credential round trip.
 
 Deferred to later V1.1 phases:
 
-- pre-brief trace viewer,
 - memory search,
 - transcript upload,
 - packaging, signing, and notarization docs.
