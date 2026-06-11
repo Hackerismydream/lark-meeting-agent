@@ -14,6 +14,8 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from nanobot.meeting.memory import MeetingMemoryStore
+from nanobot.meeting.live import LiveMeetingWorkflow
+from nanobot.meeting.live_lark import LiveLarkMeetingWorkflow
 from nanobot.meeting.prebrief import PreBriefWorkflow
 from nanobot.meeting.repository import JsonlMeetingRepository, MeetingRepository
 from nanobot.meeting.schemas import (
@@ -32,7 +34,20 @@ from nanobot.meeting.schemas import (
 )
 from nanobot.meeting.workflow import PostMeetingWorkflow
 
-CommandAction = Literal["process", "approve", "reject", "status", "qa", "prebrief", "ignored", "unknown"]
+CommandAction = Literal[
+    "process",
+    "approve",
+    "reject",
+    "status",
+    "qa",
+    "prebrief",
+    "live_join",
+    "live_leave",
+    "live_qa",
+    "clarify",
+    "ignored",
+    "unknown",
+]
 
 
 class MeetingBotContext(BaseModel):
@@ -63,6 +78,11 @@ class MeetingBotCommand:
     operation_ids: list[str] = field(default_factory=list)
     question: str | None = None
     query: str | None = None
+    meeting_number: str | None = None
+    meeting_id: str | None = None
+    live_run_id: str | None = None
+    approve_visible_join: bool = False
+    approve_visible_leave: bool = False
     dry_run: bool = True
 
 
@@ -78,7 +98,11 @@ class MeetingAgentAccessPolicy:
     def is_allowed(self, context: MeetingBotContext) -> bool:
         if context.sender_id in self.admin_users:
             return True
-        if context.sender_id not in self.allowed_users and context.sender_id not in self.write_approvers:
+        if (
+            context.sender_id not in self.allowed_users
+            and context.sender_id not in self.write_approvers
+            and context.sender_id not in self.live_approvers
+        ):
             return False
         if context.chat_type == "group" and self.allowed_chat_ids and context.chat_id not in self.allowed_chat_ids:
             return False
@@ -196,12 +220,20 @@ def parse_meeting_command(text: str) -> MeetingBotCommand:
     normalized = text.strip()
     if not normalized:
         return MeetingBotCommand(action="ignored")
+    if normalized in {"确认", "同意", "批准", "可以", "写入", "执行"}:
+        return MeetingBotCommand(action="clarify")
     if normalized.startswith("整理最近一场会"):
         return MeetingBotCommand(action="process", dry_run=True)
     if normalized.startswith("查看待审批操作"):
         return MeetingBotCommand(action="status")
     if normalized.startswith("帮我准备") or normalized.startswith("准备"):
         return MeetingBotCommand(action="prebrief", query=normalized)
+    if normalized.startswith("加入会议"):
+        parts = normalized.split()
+        return MeetingBotCommand(action="live_join", meeting_number=parts[1] if len(parts) > 1 else None)
+    if normalized.startswith("离开会议"):
+        parts = normalized.split()
+        return MeetingBotCommand(action="live_leave", meeting_id=parts[1] if len(parts) > 1 else None)
     if normalized.startswith("查询：") or normalized.startswith("查询:"):
         return MeetingBotCommand(action="qa", question=normalized.split(":", 1)[-1].split("：", 1)[-1].strip())
     if not normalized.startswith("/meeting"):
@@ -218,6 +250,20 @@ def parse_meeting_command(text: str) -> MeetingBotCommand:
         return MeetingBotCommand(action="qa", question=" ".join(parts[2:]).strip() or None)
     if command == "status":
         return MeetingBotCommand(action="status", run_id=parts[2] if len(parts) > 2 else None)
+    if command in {"live-join", "live_join"}:
+        return MeetingBotCommand(
+            action="live_join",
+            meeting_number=parts[2] if len(parts) > 2 else None,
+            approve_visible_join="--approve-visible-join" in parts,
+        )
+    if command in {"live-leave", "live_leave"}:
+        return MeetingBotCommand(
+            action="live_leave",
+            meeting_id=parts[2] if len(parts) > 2 else None,
+            approve_visible_leave="--approve-visible-leave" in parts,
+        )
+    if command in {"live-qa", "live_qa"} and len(parts) >= 4:
+        return MeetingBotCommand(action="live_qa", live_run_id=parts[2], question=" ".join(parts[3:]).strip())
     if command == "approve" and len(parts) >= 4:
         operation_ids = [item for part in parts[3:] for item in re.split(r"[,，]", part) if item]
         return MeetingBotCommand(action="approve", run_id=parts[2], operation_ids=operation_ids)
@@ -286,6 +332,11 @@ class ProductionMeetingBot:
             return MeetingBotReply(status="ignored", text="")
         if command.action == "unknown":
             return MeetingBotReply(status="error", text="无法识别会议命令。请使用 /meeting process|approve|reject|status|qa|prebrief。")
+        if command.action == "clarify":
+            return MeetingBotReply(
+                status="clarification_required",
+                text="不会根据模糊确认执行写入。请使用 /meeting approve <run_id> <operation_id...>，并明确提供 run_id 和 operation_id。",
+            )
         if command.action == "process":
             result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).process(
                 ProcessMeetingInput(
@@ -305,12 +356,66 @@ class ProductionMeetingBot:
             if not command.question:
                 return MeetingBotReply(status="error", text="请提供查询问题。")
             answer = MeetingMemoryStore(self.workspace).qa(command.question)
-            return MeetingBotReply(status="ok", text=answer.answer, data=answer.model_dump(mode="json"))
+            status = "ok" if answer.sufficient else "insufficient_evidence"
+            return MeetingBotReply(status=status, text=answer.answer, data=answer.model_dump(mode="json"))
         if command.action == "status":
             if not command.run_id:
-                return MeetingBotReply(status="error", text="请提供 run_id。")
+                runs = self.repository.list_runs(status=RunStatus.APPROVAL_REQUIRED.value, limit=5)
+                if not runs:
+                    return MeetingBotReply(status="ok", text="当前没有待审批 runs。")
+                lines = ["待审批 runs:"]
+                for run in runs:
+                    operations = run.write_plan.operations if run.write_plan else []
+                    lines.append(f"- {run.run_id} status={run.status.value} operations={len(operations)}")
+                return MeetingBotReply(status="ok", text="\n".join(lines))
             run = self.repository.load_run(command.run_id)
             return MeetingBotReply(status="ok", text=run.model_dump_json(indent=2), run_id=run.run_id)
+        if command.action == "live_join":
+            if not command.meeting_number:
+                return MeetingBotReply(status="error", text="请提供 9 位会议号。")
+            if not self.policy.can_control_live(context):
+                self._audit_denied(context, "live_join_denied")
+                return MeetingBotReply(status="denied", text="无权限控制可见入会操作。")
+            if not command.approve_visible_join:
+                return MeetingBotReply(
+                    status="approval_required",
+                    text=(
+                        "加入会议是对参会者可见的操作，未执行。\n"
+                        f"确认加入请发送: /meeting live-join {command.meeting_number} --approve-visible-join"
+                    ),
+                )
+            result = LiveLarkMeetingWorkflow(self.workspace, self.provider_mode).join(
+                meeting_number=command.meeting_number,
+                dry_run=False,
+                approval_status=ApprovalStatus.APPROVED,
+            )
+            return MeetingBotReply(status="ok", text=result.model_dump_json(indent=2), run_id=result.live_run_id)
+        if command.action == "live_leave":
+            if not command.meeting_id:
+                return MeetingBotReply(status="error", text="请提供 meeting_id。")
+            if not self.policy.can_control_live(context):
+                self._audit_denied(context, "live_leave_denied")
+                return MeetingBotReply(status="denied", text="无权限控制可见离会操作。")
+            if not command.approve_visible_leave:
+                return MeetingBotReply(
+                    status="approval_required",
+                    text=(
+                        "离开会议是对参会者可见的操作，未执行。\n"
+                        f"确认离开请发送: /meeting live-leave {command.meeting_id} --approve-visible-leave"
+                    ),
+                )
+            result = LiveLarkMeetingWorkflow(self.workspace, self.provider_mode).leave(
+                command.meeting_id,
+                dry_run=False,
+                approval_status=ApprovalStatus.APPROVED,
+            )
+            return MeetingBotReply(status="ok", text=json.dumps(result, ensure_ascii=False, indent=2))
+        if command.action == "live_qa":
+            if not command.live_run_id or not command.question:
+                return MeetingBotReply(status="error", text="请提供 live_run_id 和问题。")
+            answer = LiveMeetingWorkflow(self.workspace).qa(command.live_run_id, command.question)
+            status = "ok" if answer.sufficient else "insufficient_evidence"
+            return MeetingBotReply(status=status, text=answer.model_dump_json(indent=2), data=answer.model_dump(mode="json"))
         if command.action == "approve":
             if not command.run_id or not command.operation_ids:
                 return MeetingBotReply(status="error", text="请提供 run_id 和 operation_ids。")

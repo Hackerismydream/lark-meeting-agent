@@ -21,6 +21,8 @@ class RunRepository(Protocol):
 
     def load_run(self, run_id: str) -> Run: ...
 
+    def list_runs(self, *, status: str | None = None, limit: int = 10) -> list[Run]: ...
+
 
 class WriteOperationRepository(Protocol):
     def list_write_operations(self, run_id: str) -> list[WriteOperation]: ...
@@ -54,6 +56,15 @@ class JsonlMeetingRepository:
     def list_write_operations(self, run_id: str) -> list[WriteOperation]:
         run = self.load_run(run_id)
         return run.write_plan.operations if run.write_plan else []
+
+    def list_runs(self, *, status: str | None = None, limit: int = 10) -> list[Run]:
+        snapshot_dir = self.store.root / "run_snapshots"
+        if not snapshot_dir.exists():
+            return []
+        runs = [Run.model_validate_json(path.read_text()) for path in snapshot_dir.glob("*.json")]
+        if status:
+            runs = [run for run in runs if run.status.value == status]
+        return sorted(runs, key=lambda run: run.updated_at, reverse=True)[:limit]
 
     def save_audit_events(self, events: list[ToolCallAuditEvent]) -> None:
         self.store.persist_audit(events)
@@ -201,6 +212,18 @@ class SQLiteMeetingRepository:
                 (run_id,),
             ).fetchall()
         return [WriteOperation.model_validate(json.loads(row["payload_json"])) for row in rows]
+
+    def list_runs(self, *, status: str | None = None, limit: int = 10) -> list[Run]:
+        query = "SELECT payload_json FROM runs"
+        params: list[object] = []
+        if status:
+            query += " WHERE status = ?"
+            params.append(status)
+        query += " ORDER BY updated_at DESC LIMIT ?"
+        params.append(limit)
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [Run.model_validate(json.loads(row["payload_json"])) for row in rows]
 
     def save_audit_events(self, events: list[ToolCallAuditEvent]) -> None:
         with self._lock, self._connect() as conn:

@@ -23,6 +23,8 @@ Use `action="process"` when the user asks to organize a completed meeting, gener
 
 Use `action="approve"` only after the user explicitly approves specific write operations. Never approve writes implicitly.
 
+Do not treat vague replies such as "确认", "同意", "批准", or "可以" as approval. Approval must include `run_id` and explicit operation IDs.
+
 Use `action="qa"` for historical questions such as why a decision was made, who committed to an action item, or what a customer recently cared about.
 
 Use `action="evaluate"` when the user asks for benchmark or resume metric evidence.
@@ -36,3 +38,17 @@ Do not invent action item owners or due dates. If evidence is missing, say the i
 Real writes require approval. The process action only returns a WritePlan.
 
 Do not claim invisible meeting capture, custom ASR, or unapproved realtime VC control. Live join and leave are allowed only through `LarkToolAdapter` after explicit approval.
+
+Canonical production commands:
+
+- `/meeting process [query]`
+- `/meeting prebrief [query]`
+- `/meeting status [run_id]`
+- `/meeting qa <question>`
+- `/meeting approve <run_id> <operation_id...>`
+- `/meeting reject <run_id>`
+- `/meeting live-join <9-digit-number> --approve-visible-join`
+- `/meeting live-leave <meeting_id> --approve-visible-leave`
+- `/meeting live-qa <live_run_id> <question>`
+
+Supported Chinese aliases include "整理最近一场会", "帮我准备...", "查看待审批操作", "查询：...", "加入会议 <会议号>", and "离开会议 <meeting_id>".
