@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from pydantic import Field
 
-from nanobot.meeting.schemas import MeetingBaseModel, QASource
+from nanobot.meeting.schemas import ExecutionStatus, MeetingBaseModel, QASource, RunTrace, ToolCallAuditEvent
 
 
 class LiveReplayMetrics(MeetingBaseModel):
@@ -43,6 +43,32 @@ class LifecycleReplayReport(MeetingBaseModel):
     live_pass_rate: float = 0.0
     postmeeting_pass_rate: float = 0.0
     failures: list[dict] = Field(default_factory=list)
+
+
+class OperationalMetrics(MeetingBaseModel):
+    latency_ms: int = 0
+    event_count: int = 0
+    conversion_count: int = 0
+    tool_call_count: int = 0
+    tool_success_count: int = 0
+    approval_count: int = 0
+    failure_count: int = 0
+
+
+def build_operational_metrics(*, trace: RunTrace, audit_events: list[ToolCallAuditEvent]) -> OperationalMetrics:
+    failures = sum(1 for event in audit_events if event.execution_status == ExecutionStatus.FAILED)
+    successes = sum(1 for event in audit_events if event.execution_status != ExecutionStatus.FAILED)
+    approvals = sum(1 for event in audit_events if event.approval_status and str(event.approval_status.value) == "approved")
+    conversion_count = sum(1 for event in trace.events if event.stage in {"convert", "normalize", "ingest"})
+    return OperationalMetrics(
+        latency_ms=_trace_latency_ms(trace),
+        event_count=len(trace.events),
+        conversion_count=conversion_count,
+        tool_call_count=len(audit_events),
+        tool_success_count=successes,
+        approval_count=approvals,
+        failure_count=failures,
+    )
 
 
 @dataclass(frozen=True)
@@ -96,6 +122,16 @@ def similar_text(left: str, right: str) -> bool:
 
 def average(values: list[float], default: float = 1.0) -> float:
     return sum(values) / len(values) if values else default
+
+
+def _trace_latency_ms(trace: RunTrace) -> int:
+    if len(trace.events) < 2:
+        return 0
+    from datetime import datetime
+
+    start = datetime.fromisoformat(trace.events[0].timestamp)
+    end = datetime.fromisoformat(trace.events[-1].timestamp)
+    return max(0, int((end - start).total_seconds() * 1000))
 
 
 def _normalize(value: str) -> str:

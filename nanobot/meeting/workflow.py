@@ -13,6 +13,7 @@ from nanobot.meeting.lark_adapter import LarkToolAdapter
 from nanobot.meeting.memory import MeetingMemoryStore
 from nanobot.meeting.memory_workflow import MemoryWorkflow
 from nanobot.meeting.normalizer import TranscriptNormalizer
+from nanobot.meeting.trace import RunTraceWriter
 from nanobot.meeting.schemas import (
     ApprovalStatus,
     ExecutionStatus,
@@ -268,10 +269,23 @@ class PostMeetingWorkflow:
         analyzer_mode: str,
     ) -> ProcessMeetingResult:
         run_id = str(uuid.uuid4())
+        trace = RunTraceWriter(self.workspace, run_id, "PostMeetingWorkflow")
+        trace.add("start", "post meeting processing requested", {"meeting_id": meeting.meeting_id, "provider_mode": str(provider_mode)})
         segments = self.normalizer.normalize_text(meeting.meeting_id, transcript)
+        trace.add("normalize", "transcript normalized", {"segments": len(segments)})
         provider = ProviderMode(provider_mode)
         minutes = create_analyzer(analyzer_mode).analyze(meeting.meeting_id, meeting.title, segments)
         minutes = EvidenceIntegrityValidator().validate_minutes(minutes, segments)
+        trace.add(
+            "analyze",
+            "meeting minutes analyzed",
+            {
+                "decisions": len(minutes.decisions),
+                "action_items": len(minutes.action_items),
+                "risks": len(minutes.risks),
+                "open_questions": len(minutes.open_questions),
+            },
+        )
         write_plan = WritePlanBuilder().build(
             run_id=run_id,
             meeting=meeting,
@@ -281,6 +295,7 @@ class PostMeetingWorkflow:
             send_message=send_message,
             chat_id=chat_id,
         )
+        trace.add("write_plan", "write plan generated", {"operations": len(write_plan.operations), "dry_run": dry_run})
         status = RunStatus.APPROVAL_REQUIRED if write_plan.operations else RunStatus.COMPLETED
         run = Run(
             run_id=run_id,
@@ -295,7 +310,10 @@ class PostMeetingWorkflow:
         )
         paths = self.memory.persist_run(run)
         paths.extend(MemoryWorkflow(self.workspace).consolidate_run(run))
+        trace.add("persist", "run memory persisted", {"paths": len(paths)})
         paths.append(str(self.memory.save_run_snapshot(run)))
+        trace.add("complete", "post meeting processing complete", {"status": status.value})
+        paths.append(str(trace.save()))
         return ProcessMeetingResult(
             run_id=run_id,
             status=status,
