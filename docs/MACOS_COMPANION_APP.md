@@ -135,7 +135,17 @@ Current shell capabilities:
 
 Deferred to later V1.1 phases:
 
-- packaging, signing, and notarization docs.
+- real app bundle packaging,
+- signing,
+- notarization,
+- App Store release.
+
+Security and release docs:
+
+- `docs/MACOS_SECURITY.md`
+- `docs/MACOS_ENVIRONMENT.md`
+- `docs/MACOS_PACKAGING.md`
+- `docs/MACOS_MANUAL_QA.md`
 
 ## Phase 3 Validation
 

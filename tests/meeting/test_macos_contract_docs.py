@@ -35,7 +35,8 @@ def test_macos_contract_doc_does_not_claim_asr_or_production_release() -> None:
     assert "phase 3 macos shell is implemented" in text
     assert "deferred to later v1.1 phases" in text
     assert "claim asr/audio transcription support" in text
-    assert "app store release" not in text
+    assert "app store released" not in text
+    assert "notarization completed" not in text
 
 
 def test_macos_approval_inbox_doc_preserves_backend_write_boundary() -> None:
@@ -70,3 +71,16 @@ def test_macos_search_upload_doc_rejects_audio_and_preserves_backend_boundary() 
     assert "does not implement ASR" in text
     assert "audio transcription" in text
     assert "Real writes still require backend approval and LarkToolAdapter execution" in text
+
+
+def test_macos_security_and_packaging_docs_are_honest_about_release_state() -> None:
+    security = Path("docs/MACOS_SECURITY.md").read_text()
+    packaging = Path("docs/MACOS_PACKAGING.md").read_text()
+    qa = Path("docs/MACOS_MANUAL_QA.md").read_text()
+
+    assert "must not call Lark APIs directly" in security
+    assert "Persistent bearer tokens use macOS Keychain Services" in security
+    assert "Signing and notarization are not completed" in packaging
+    assert "Do not describe the app as App Store released" in packaging
+    assert "No direct Lark writes occur from macOS" in qa
+    assert ".mp3" in qa and ".wav" in qa and ".m4a" in qa
