@@ -7,14 +7,18 @@ public protocol NotificationScheduling: Sendable {
 }
 
 public struct LocalNotificationService: NotificationScheduling, @unchecked Sendable {
-    private let center: UNUserNotificationCenter
+    private let centerProvider: @Sendable () -> UNUserNotificationCenter?
 
-    public init(center: UNUserNotificationCenter = .current()) {
-        self.center = center
+    public init(centerProvider: @escaping @Sendable () -> UNUserNotificationCenter? = Self.defaultCenter) {
+        self.centerProvider = centerProvider
+    }
+
+    public init(center: UNUserNotificationCenter) {
+        self.centerProvider = { center }
     }
 
     public func notifyPendingApprovals(count: Int) async {
-        guard count > 0, await authorizationAvailable() else {
+        guard count > 0, let center = centerProvider(), await authorizationAvailable(center) else {
             return
         }
         let content = UNMutableNotificationContent()
@@ -26,7 +30,7 @@ public struct LocalNotificationService: NotificationScheduling, @unchecked Senda
     }
 
     public func notifyPreBriefAvailable(title: String) async {
-        guard await authorizationAvailable() else {
+        guard let center = centerProvider(), await authorizationAvailable(center) else {
             return
         }
         let content = UNMutableNotificationContent()
@@ -37,12 +41,19 @@ public struct LocalNotificationService: NotificationScheduling, @unchecked Senda
         try? await center.add(request)
     }
 
-    private func authorizationAvailable() async -> Bool {
+    private func authorizationAvailable(_ center: UNUserNotificationCenter) async -> Bool {
         let settings = await center.notificationSettings()
         if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
             return true
         }
         return (try? await center.requestAuthorization(options: [.alert, .sound])) == true
+    }
+
+    public static func defaultCenter() -> UNUserNotificationCenter? {
+        if Bundle.main.bundleIdentifier == nil {
+            return nil
+        }
+        return UNUserNotificationCenter.current()
     }
 }
 
