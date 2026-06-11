@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
+from contextlib import contextmanager
 from pathlib import Path
+from collections.abc import Iterator
 from typing import Protocol
 
 from nanobot.meeting.memory import MeetingMemoryStore
-from nanobot.meeting.schemas import Run, ToolCallAuditEvent, WriteOperation
+from nanobot.meeting.schemas import EntityMemory, Run, ToolCallAuditEvent, WriteOperation
+
+SCHEMA_VERSION = 1
 
 
 class RunRepository(Protocol):
@@ -64,10 +69,17 @@ class SQLiteMeetingRepository:
     def __init__(self, db_path: Path | str) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
         self._init_schema()
 
+    @contextmanager
+    def approval_guard(self, run_id: str) -> Iterator[None]:
+        del run_id
+        with self._lock:
+            yield
+
     def save_run(self, run: Run) -> None:
-        with self._connect() as conn:
+        with self._lock, self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO runs(run_id, status, provider_mode, analyzer_mode, payload_json, created_at, updated_at)
@@ -176,14 +188,14 @@ class SQLiteMeetingRepository:
                     )
 
     def load_run(self, run_id: str) -> Run:
-        with self._connect() as conn:
+        with self._lock, self._connect() as conn:
             row = conn.execute("SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         if not row:
             raise KeyError(f"run not found: {run_id}")
         return Run.model_validate(json.loads(row["payload_json"]))
 
     def list_write_operations(self, run_id: str) -> list[WriteOperation]:
-        with self._connect() as conn:
+        with self._lock, self._connect() as conn:
             rows = conn.execute(
                 "SELECT payload_json FROM write_operations WHERE run_id = ? ORDER BY operation_id",
                 (run_id,),
@@ -191,7 +203,7 @@ class SQLiteMeetingRepository:
         return [WriteOperation.model_validate(json.loads(row["payload_json"])) for row in rows]
 
     def save_audit_events(self, events: list[ToolCallAuditEvent]) -> None:
-        with self._connect() as conn:
+        with self._lock, self._connect() as conn:
             for event in events:
                 conn.execute(
                     """
@@ -201,6 +213,22 @@ class SQLiteMeetingRepository:
                     """,
                     (event.audit_id, event.operation_name, event.model_dump_json()),
                 )
+
+    def save_entity_memory(self, memory: EntityMemory) -> None:
+        with self._lock, self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO entity_memories(entity_type, entity_id, payload_json)
+                VALUES(?, ?, ?)
+                ON CONFLICT(entity_type, entity_id) DO UPDATE SET payload_json=excluded.payload_json
+                """,
+                (memory.entity_type.value, memory.entity_id, memory.model_dump_json()),
+            )
+
+    def schema_version(self) -> int:
+        with self._lock, self._connect() as conn:
+            row = conn.execute("SELECT value FROM schema_meta WHERE key = 'schema_version'").fetchone()
+        return int(row["value"]) if row else 0
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -282,5 +310,17 @@ class SQLiteMeetingRepository:
                     payload_json TEXT NOT NULL,
                     PRIMARY KEY(entity_type, entity_id)
                 );
+                CREATE TABLE IF NOT EXISTS schema_meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
                 """
+            )
+            conn.execute(
+                """
+                INSERT INTO schema_meta(key, value)
+                VALUES('schema_version', ?)
+                ON CONFLICT(key) DO UPDATE SET value=excluded.value
+                """,
+                (str(SCHEMA_VERSION),),
             )

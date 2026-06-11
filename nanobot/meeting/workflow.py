@@ -161,13 +161,28 @@ class PostMeetingWorkflow:
         override_provider_mode: bool = False,
     ):
         run = self.memory.load_run_snapshot(run_id)
+        return self.approve_run(
+            run,
+            operation_ids,
+            provider_mode=provider_mode,
+            override_provider_mode=override_provider_mode,
+        )
+
+    def approve_run(
+        self,
+        run: Run,
+        operation_ids: list[str],
+        *,
+        provider_mode: str | ProviderMode | None = None,
+        override_provider_mode: bool = False,
+    ) -> ProcessMeetingResult:
         if not run.write_plan:
             raise TranscriptNotFoundError("run has no write plan")
         stored_provider = ProviderMode(run.provider_mode)
         requested_provider = ProviderMode(provider_mode) if provider_mode else stored_provider
         if requested_provider != stored_provider and not override_provider_mode:
             raise ApprovalProviderMismatchError(
-                f"run {run_id} was created with provider_mode={stored_provider.value}; "
+                f"run {run.run_id} was created with provider_mode={stored_provider.value}; "
                 f"approval requested provider_mode={requested_provider.value}"
             )
         adapter = self._adapter(requested_provider)
@@ -196,7 +211,14 @@ class PostMeetingWorkflow:
             except Exception as exc:
                 operation.error = str(exc)
                 operation.execution_status = ExecutionStatus.FAILED
-        run.status = RunStatus.COMPLETED
+        completed = [operation for operation in run.write_plan.operations if operation.execution_status == ExecutionStatus.COMPLETED]
+        failed = [operation for operation in run.write_plan.operations if operation.execution_status == ExecutionStatus.FAILED]
+        if failed and completed:
+            run.status = RunStatus.PARTIAL_SUCCESS
+        elif failed:
+            run.status = RunStatus.NEEDS_RECONCILIATION
+        else:
+            run.status = RunStatus.COMPLETED
         run.approved_at = datetime.now(timezone.utc).isoformat()
         run.updated_at = run.approved_at
         self.memory.save_run_snapshot(run)
@@ -211,6 +233,9 @@ class PostMeetingWorkflow:
 
     def reject(self, run_id: str) -> ProcessMeetingResult:
         run = self.memory.load_run_snapshot(run_id)
+        return self.reject_run(run)
+
+    def reject_run(self, run: Run) -> ProcessMeetingResult:
         if not run.write_plan:
             raise TranscriptNotFoundError("run has no write plan")
         rejected_at = datetime.now(timezone.utc).isoformat()

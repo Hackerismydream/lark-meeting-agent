@@ -89,6 +89,8 @@ class RunStatus(StrEnum):
     RUNNING = "running"
     APPROVAL_REQUIRED = "approval_required"
     COMPLETED = "completed"
+    PARTIAL_SUCCESS = "partial_success"
+    NEEDS_RECONCILIATION = "needs_reconciliation"
     FAILED = "failed"
     REJECTED = "rejected"
 

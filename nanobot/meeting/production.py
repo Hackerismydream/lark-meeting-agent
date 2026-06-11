@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -308,8 +309,7 @@ class ProductionMeetingBot:
         if command.action == "status":
             if not command.run_id:
                 return MeetingBotReply(status="error", text="请提供 run_id。")
-            run = MeetingMemoryStore(self.workspace).load_run_snapshot(command.run_id)
-            self.repository.save_run(run)
+            run = self.repository.load_run(command.run_id)
             return MeetingBotReply(status="ok", text=run.model_dump_json(indent=2), run_id=run.run_id)
         if command.action == "approve":
             if not command.run_id or not command.operation_ids:
@@ -317,12 +317,15 @@ class ProductionMeetingBot:
             if not self.policy.can_approve(context):
                 self._audit_denied(context, "write_approval_denied")
                 return MeetingBotReply(status="denied", text="无权限审批写操作。")
-            result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).approve(
-                command.run_id or "",
-                command.operation_ids,
-            )
-            run = MeetingMemoryStore(self.workspace).load_run_snapshot(result.run_id)
-            self.repository.save_run(run)
+            guard = getattr(self.repository, "approval_guard", None)
+            with (guard(command.run_id) if guard else nullcontext()):
+                run = self.repository.load_run(command.run_id)
+                result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).approve_run(
+                    run,
+                    command.operation_ids,
+                )
+                updated_run = MeetingMemoryStore(self.workspace).load_run_snapshot(result.run_id)
+                self.repository.save_run(updated_run)
             completed = [
                 op.operation_id
                 for op in result.write_plan.operations
@@ -335,9 +338,12 @@ class ProductionMeetingBot:
             if not self.policy.can_approve(context):
                 self._audit_denied(context, "write_reject_denied")
                 return MeetingBotReply(status="denied", text="无权限拒绝写操作。")
-            result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).reject(command.run_id or "")
-            run = MeetingMemoryStore(self.workspace).load_run_snapshot(result.run_id)
-            self.repository.save_run(run)
+            guard = getattr(self.repository, "approval_guard", None)
+            with (guard(command.run_id) if guard else nullcontext()):
+                run = self.repository.load_run(command.run_id)
+                result = PostMeetingWorkflow(self.workspace, self.provider_mode, self.analyzer_mode).reject_run(run)
+                updated_run = MeetingMemoryStore(self.workspace).load_run_snapshot(result.run_id)
+                self.repository.save_run(updated_run)
             return MeetingBotReply(status=RunStatus.REJECTED.value, text=f"已拒绝 run {result.run_id} 的待写入操作。", run_id=result.run_id)
         if command.action == "prebrief":
             brief = PreBriefWorkflow(self.workspace, self.provider_mode).generate(
