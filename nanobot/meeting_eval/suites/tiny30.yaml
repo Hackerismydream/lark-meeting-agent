@@ -1,0 +1,6 @@
+name: tiny30
+description: MeetingBank/QMSum/VCSum tiny evaluation suite.
+max_per_dataset:
+  meetingbank: 10
+  qmsum: 10
+  vcsum: 10

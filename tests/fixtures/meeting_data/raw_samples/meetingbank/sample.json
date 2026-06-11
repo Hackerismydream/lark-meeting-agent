@@ -1,0 +1,16 @@
+[
+  {
+    "id": "mb-toy-1",
+    "title": "City Council Budget Meeting",
+    "city": "Toy City",
+    "split": "test",
+    "agenda": [
+      {"title": "Budget update", "summary": "Discuss budget changes."}
+    ],
+    "transcript": [
+      {"speaker": "Chair", "text": "We will review the budget update.", "start_sec": 0, "end_sec": 8},
+      {"speaker": "Member Lee", "text": "The library allocation should remain unchanged.", "start_sec": 8, "end_sec": 18}
+    ],
+    "summary": "The council reviewed the budget and discussed library allocation."
+  }
+]

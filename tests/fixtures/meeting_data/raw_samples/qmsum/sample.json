@@ -1,0 +1,29 @@
+[
+  {
+    "id": "product-toy-1",
+    "domain": "Product",
+    "title": "Product Planning Meeting",
+    "meeting_transcripts": [
+      {"speaker": "Alice", "content": "We should launch the beta next week."},
+      {"speaker": "Bob", "content": "I will prepare the onboarding checklist."},
+      {"speaker": "Alice", "content": "The unrelated finance plan is not discussed here."}
+    ],
+    "topic_list": [
+      {"topic": "Beta launch"}
+    ],
+    "specific_query_list": [
+      {
+        "query": "Who will prepare onboarding?",
+        "answer": "Bob will prepare the onboarding checklist.",
+        "relevant_text_span": [[1, 1]]
+      }
+    ],
+    "general_query_list": [
+      {
+        "query": "What is the meeting mainly about?",
+        "answer": "The team discussed a beta launch.",
+        "relevant_text_span": [[0, 1]]
+      }
+    ]
+  }
+]
