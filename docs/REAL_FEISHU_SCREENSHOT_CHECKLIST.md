@@ -1,21 +1,20 @@
 # Real Feishu Screenshot Checklist
 
-Do not commit screenshots or private Feishu data automatically.
+Screenshots are pending until a manual or Stage 4 Computer Use pass confirms private content is safe.
 
-Manual screenshots, if needed:
+1. Feishu calendar agenda screenshot: pending.
+2. Generated prebrief doc screenshot: pending.
+3. Generated minutes doc screenshot: pending.
+4. Generated task screenshot: pending.
+5. Sandbox chat message screenshot: pending.
+6. Local report screenshot: pending.
 
-- Feishu calendar agenda visible for a sandbox meeting.
-- Dry-run prebrief evidence file.
-- WritePlan preview before approval.
-- Sandbox docs/tasks/IM result after explicit approval.
-- QA answer with source ids and fixture provenance.
+Do not capture or commit:
 
-Redact:
-
-- tenant ids,
-- private URLs,
-- open ids if they identify real users,
-- app secrets,
-- tokens,
+- private chats,
+- private meeting transcripts,
+- access tokens,
 - cookies,
-- private chat names.
+- app secrets,
+- private document URLs,
+- open ids or user ids that identify real users.

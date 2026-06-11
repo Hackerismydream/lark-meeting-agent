@@ -249,12 +249,12 @@ class CliLarkProvider:
             return argv
         if operation == "calendar.agenda":
             argv = ["lark-cli", "calendar", "+agenda", *common]
-            if query := payload.get("query"):
-                argv.extend(["--query", str(query)])
             if start := payload.get("start"):
                 argv.extend(["--start", str(start)])
             if end := payload.get("end"):
                 argv.extend(["--end", str(end)])
+            if calendar_id := payload.get("calendar_id"):
+                argv.extend(["--calendar-id", str(calendar_id)])
             return argv
         if operation in {"task.search", "task.list"}:
             argv = ["lark-cli", "task", "+list", *common]
