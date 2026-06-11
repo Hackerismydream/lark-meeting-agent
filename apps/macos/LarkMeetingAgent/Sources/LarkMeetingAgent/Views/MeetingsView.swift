@@ -17,12 +17,17 @@ struct MeetingsView: View {
                 }
             }
             if meetings.isEmpty {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "calendar")
                         .foregroundStyle(.secondary)
-                    Text("No meetings from backend")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Calendar is not connected yet")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text("Use Upload to add meeting memory, or enter a query below to build a pre-brief from existing local runs.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             } else {
                 ForEach(meetings) { meeting in

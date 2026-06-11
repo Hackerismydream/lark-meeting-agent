@@ -14,7 +14,7 @@ struct PreBriefTracePanelView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Pre-brief")
                     .font(.system(size: 22, weight: .semibold))
-                Text("Prepare context, open questions, and source-backed reminders before a meeting.")
+                Text("Use existing meeting memory to prepare context before the next meeting. Upload transcripts first if memory is empty.")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
@@ -57,14 +57,14 @@ struct PreBriefTracePanelView: View {
 
     private var preBriefForm: some View {
         VStack(alignment: .leading, spacing: 6) {
-            labeledTextField("Meeting query", text: $query)
+            labeledTextField("Meeting query", placeholder: "project review, customer name, or topic", text: $query)
             HStack(spacing: 10) {
-                labeledTextField("Meeting ID", text: $meetingID)
-                labeledTextField("Meeting type", text: $meetingType)
+                labeledTextField("Meeting ID", placeholder: "optional", text: $meetingID)
+                labeledTextField("Meeting type", placeholder: "general", text: $meetingType)
             }
             HStack(spacing: 10) {
-                labeledTextField("Project", text: $project)
-                labeledTextField("Customer", text: $customer)
+                labeledTextField("Project", placeholder: "optional", text: $project)
+                labeledTextField("Customer", placeholder: "optional", text: $customer)
             }
             Button {
                 generatePreBrief()
@@ -76,12 +76,12 @@ struct PreBriefTracePanelView: View {
         }
     }
 
-    private func labeledTextField(_ label: String, text: Binding<String>) -> some View {
+    private func labeledTextField(_ label: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            TextField(label, text: text)
+            TextField(placeholder, text: text)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit {
                     generatePreBrief()

@@ -10,7 +10,7 @@ struct SearchView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Search")
                     .font(.system(size: 22, weight: .semibold))
-                Text("Ask across meeting memory and require source citations.")
+                Text("Ask questions after you have uploaded or processed meeting transcripts.")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }

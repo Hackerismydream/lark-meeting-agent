@@ -80,7 +80,7 @@ struct ApprovalInboxView: View {
                 .foregroundStyle(.green)
             Text("No pending approvals")
                 .font(.system(size: 15, weight: .medium))
-            Text("Approved write plans and rejected runs will disappear from this inbox.")
+            Text("Upload a transcript first. Generated Docs, Tasks, or IM operations will appear here for review.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

@@ -5,7 +5,7 @@ struct StatusView: View {
     @ObservedObject var viewModel: StatusViewModel
     @StateObject private var searchUploadViewModel = SearchUploadViewModel()
     @State private var settingsPresented = false
-    @State private var selectedSection: WorkspaceSection = .approvals
+    @State private var selectedSection: WorkspaceSection = .upload
 
     var body: some View {
         VStack(spacing: 0) {
@@ -119,23 +119,23 @@ struct StatusView: View {
 }
 
 enum WorkspaceSection: String, CaseIterable, Identifiable {
-    case approvals
-    case preBrief
-    case search
     case upload
+    case approvals
+    case search
+    case preBrief
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .approvals:
-            return "Approvals"
-        case .preBrief:
-            return "Pre-brief"
-        case .search:
-            return "Search"
         case .upload:
             return "Upload"
+        case .approvals:
+            return "Approvals"
+        case .search:
+            return "Search"
+        case .preBrief:
+            return "Pre-brief"
         }
     }
 }
