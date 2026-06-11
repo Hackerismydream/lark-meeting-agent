@@ -22,6 +22,25 @@ class ProviderStatus(StrEnum):
     ERROR = "error"
 
 
+class ProviderCapability(StrEnum):
+    TRANSCRIPT_EVENTS = "transcript_events"
+    AUDIO_FILE = "audio_file"
+    APPEND_POLLING = "append_polling"
+    MARKER_EVENTS = "marker_events"
+
+
+class MeetingInputProviderError(RuntimeError):
+    """Base error for meeting input provider failures."""
+
+
+class MeetingInputSourceError(MeetingInputProviderError):
+    """Raised when a provider source path is missing or invalid."""
+
+
+class MeetingInputSessionError(MeetingInputProviderError):
+    """Raised when a provider session is invalid for the requested operation."""
+
+
 class MeetingInputProviderConfig(MeetingBaseModel):
     provider_name: str
     meeting_id: str
@@ -29,6 +48,7 @@ class MeetingInputProviderConfig(MeetingBaseModel):
     source_path: str | None = None
     transcript_path: str | None = None
     live_run_id: str | None = None
+    append_mode: bool = False
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("provider_name", "meeting_id")
@@ -49,6 +69,8 @@ class MeetingInputSession(MeetingBaseModel):
     transcript_path: str | None = None
     status: ProviderStatus = ProviderStatus.IDLE
     cursor: int = 0
+    append_mode: bool = False
+    capabilities: list[ProviderCapability] = Field(default_factory=list)
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
@@ -85,19 +107,27 @@ class LocalTranscriptProvider:
             title=config.title,
             source_path=str(path),
             status=ProviderStatus.RUNNING,
+            append_mode=config.append_mode,
+            capabilities=[ProviderCapability.TRANSCRIPT_EVENTS]
+            + ([ProviderCapability.APPEND_POLLING] if config.append_mode else []),
             metadata=dict(config.metadata),
         )
 
     def poll(self, session: MeetingInputSession) -> MeetingInputEventBatch:
-        if session.status in {ProviderStatus.EXHAUSTED, ProviderStatus.STOPPED}:
+        if session.status == ProviderStatus.STOPPED:
+            stopped = session.model_copy(update={"status": ProviderStatus.STOPPED})
+            return MeetingInputEventBatch(session=stopped, status=ProviderStatus.STOPPED)
+        if session.status == ProviderStatus.EXHAUSTED and not session.append_mode:
             exhausted = session.model_copy(update={"status": ProviderStatus.EXHAUSTED})
             return MeetingInputEventBatch(session=exhausted, status=ProviderStatus.EXHAUSTED)
         if not session.source_path:
-            raise ValueError("local transcript session is missing source_path")
+            raise MeetingInputSessionError("local transcript session is missing source_path")
         segments = self._load_segments(Path(session.source_path), session.meeting_id)
+        if len(segments) < session.cursor:
+            raise MeetingInputSessionError("local transcript source appears to have been truncated")
         pending = segments[session.cursor :]
         events = [_segment_to_event(segment, session.live_run_id) for segment in pending]
-        status = ProviderStatus.EXHAUSTED
+        status = ProviderStatus.RUNNING if session.append_mode else ProviderStatus.EXHAUSTED
         updated = session.model_copy(update={"cursor": len(segments), "status": status})
         return MeetingInputEventBatch(
             session=updated,
@@ -112,6 +142,8 @@ class LocalTranscriptProvider:
 
     def _load_segments(self, path: Path, meeting_id: str) -> list[TranscriptSegment]:
         text = path.read_text(encoding="utf-8")
+        if not text.strip():
+            return []
         if path.suffix.lower() == ".json":
             return self.normalizer.normalize_json(meeting_id, text)
         return self.normalizer.normalize_text(meeting_id, text)
@@ -129,7 +161,7 @@ class LocalAudioFileProvider:
         audio_path = _required_existing_file(config.source_path, self.workspace)
         suffix = audio_path.suffix.lower()
         if suffix not in self.supported_suffixes:
-            raise ValueError(f"unsupported audio file type: {suffix or '<none>'}")
+            raise MeetingInputSourceError(f"unsupported audio file type: {suffix or '<none>'}")
         transcript_path = _optional_existing_file(config.transcript_path, self.workspace)
         metadata = dict(config.metadata)
         metadata.update(_audio_metadata(audio_path))
@@ -142,6 +174,11 @@ class LocalAudioFileProvider:
             source_path=str(audio_path),
             transcript_path=str(transcript_path) if transcript_path else None,
             status=ProviderStatus.RUNNING,
+            capabilities=[
+                ProviderCapability.AUDIO_FILE,
+                ProviderCapability.MARKER_EVENTS,
+                *([ProviderCapability.TRANSCRIPT_EVENTS] if transcript_path else []),
+            ],
             metadata=metadata,
         )
 
@@ -197,10 +234,10 @@ def _segment_to_event(segment: TranscriptSegment, live_run_id: str) -> LiveMeeti
 
 def _required_existing_file(path: str | None, workspace: Path) -> Path:
     if not path:
-        raise ValueError("source_path is required")
+        raise MeetingInputSourceError("source_path is required")
     resolved = _resolve(path, workspace)
     if not resolved.is_file():
-        raise FileNotFoundError(str(resolved))
+        raise MeetingInputSourceError(f"source file not found: {resolved}")
     return resolved
 
 
@@ -209,7 +246,7 @@ def _optional_existing_file(path: str | None, workspace: Path) -> Path | None:
         return None
     resolved = _resolve(path, workspace)
     if not resolved.is_file():
-        raise FileNotFoundError(str(resolved))
+        raise MeetingInputSourceError(f"source file not found: {resolved}")
     return resolved
 
 

@@ -7,6 +7,8 @@ from pathlib import Path
 from nanobot.meeting.input_provider import (
     LocalAudioFileProvider,
     LocalTranscriptProvider,
+    MeetingInputSourceError,
+    ProviderCapability,
     MeetingInputProviderConfig,
     ProviderStatus,
 )
@@ -30,6 +32,7 @@ def test_local_transcript_provider_replays_text_as_canonical_events(tmp_path: Pa
     second = provider.poll(batch.session)
 
     assert batch.status == ProviderStatus.EXHAUSTED
+    assert ProviderCapability.TRANSCRIPT_EVENTS in session.capabilities
     assert [event.kind for event in batch.events] == [LiveEventKind.TRANSCRIPT_DELTA, LiveEventKind.TRANSCRIPT_DELTA]
     assert [event.segment_id for event in batch.events] == ["seg-0001", "seg-0002"]
     assert batch.transcript_segments[0].speaker_name == "Alice"
@@ -123,10 +126,64 @@ def test_local_audio_file_provider_rejects_unsupported_file_type(tmp_path: Path)
                 source_path="meeting.mov",
             )
         )
-    except ValueError as exc:
+    except MeetingInputSourceError as exc:
         assert "unsupported audio file type" in str(exc)
     else:
         raise AssertionError("unsupported audio file was accepted")
+
+
+def test_local_transcript_provider_append_mode_emits_only_new_lines(tmp_path: Path) -> None:
+    transcript = tmp_path / "append.txt"
+    transcript.write_text("", encoding="utf-8")
+    provider = LocalTranscriptProvider(tmp_path)
+    session = provider.start(
+        MeetingInputProviderConfig(
+            provider_name="local_transcript",
+            meeting_id="append-meeting",
+            source_path="append.txt",
+            live_run_id="append-live",
+            append_mode=True,
+        )
+    )
+
+    first = provider.poll(session)
+    transcript.write_text("[00:01] Alice: 决定采用本地 transcript live。\n", encoding="utf-8")
+    second = provider.poll(first.session)
+    third = provider.poll(second.session)
+    transcript.write_text(
+        "[00:01] Alice: 决定采用本地 transcript live。\n[00:02] Bob: 我负责补充测试。\n",
+        encoding="utf-8",
+    )
+    fourth = provider.poll(third.session)
+
+    assert ProviderCapability.APPEND_POLLING in session.capabilities
+    assert first.status == ProviderStatus.RUNNING
+    assert first.events == []
+    assert [event.segment_id for event in second.events] == ["seg-0001"]
+    assert third.events == []
+    assert [event.segment_id for event in fourth.events] == ["seg-0002"]
+    assert fourth.status == ProviderStatus.RUNNING
+
+
+def test_local_transcript_provider_stop_prevents_more_events(tmp_path: Path) -> None:
+    transcript = tmp_path / "append.txt"
+    transcript.write_text("[00:01] Alice: 决定先做。", encoding="utf-8")
+    provider = LocalTranscriptProvider(tmp_path)
+    session = provider.start(
+        MeetingInputProviderConfig(
+            provider_name="local_transcript",
+            meeting_id="stop-meeting",
+            source_path="append.txt",
+            append_mode=True,
+        )
+    )
+    provider.stop(session)
+    transcript.write_text("[00:01] Alice: 决定先做。\n[00:02] Bob: 我负责补充。", encoding="utf-8")
+
+    batch = provider.poll(session)
+
+    assert batch.status == ProviderStatus.STOPPED
+    assert batch.events == []
 
 
 def _write_wav(path: Path) -> None:

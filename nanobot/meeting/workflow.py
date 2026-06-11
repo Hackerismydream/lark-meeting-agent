@@ -24,6 +24,7 @@ from nanobot.meeting.schemas import (
     ProviderMode,
     Run,
     RunStatus,
+    TranscriptSegment,
 )
 from nanobot.meeting.write_plan import WritePlanBuilder
 
@@ -78,6 +79,46 @@ class PostMeetingWorkflow:
         return self._run(
             meeting,
             path.read_text(),
+            create_doc,
+            create_tasks,
+            send_message,
+            chat_id,
+            dry_run,
+            provider_mode=provider_mode or self.provider_mode,
+            analyzer_mode=analyzer_mode or self.analyzer_mode,
+        )
+
+    def process_transcript_segments(
+        self,
+        meeting_id: str,
+        title: str,
+        segments: list[TranscriptSegment],
+        *,
+        create_doc: bool = True,
+        create_tasks: bool = True,
+        send_message: bool = False,
+        chat_id: str | None = None,
+        dry_run: bool = True,
+        provider_mode: str | ProviderMode | None = None,
+        analyzer_mode: str | None = None,
+        source: str = "local_transcript_live",
+    ) -> ProcessMeetingResult:
+        if not segments:
+            raise TranscriptNotFoundError("no accumulated transcript segments")
+        meeting = Meeting(meeting_id=meeting_id, title=title, source=source)
+        run_id = str(uuid.uuid4())
+        trace = RunTraceWriter(self.workspace, run_id, "PostMeetingWorkflow")
+        trace.add(
+            "start",
+            "post meeting processing requested",
+            {"meeting_id": meeting.meeting_id, "provider_mode": str(provider_mode or self.provider_mode)},
+        )
+        trace.add("normalize", "transcript segments loaded", {"segments": len(segments)})
+        return self._run_segments(
+            run_id,
+            trace,
+            meeting,
+            segments,
             create_doc,
             create_tasks,
             send_message,
@@ -273,6 +314,34 @@ class PostMeetingWorkflow:
         trace.add("start", "post meeting processing requested", {"meeting_id": meeting.meeting_id, "provider_mode": str(provider_mode)})
         segments = self.normalizer.normalize_text(meeting.meeting_id, transcript)
         trace.add("normalize", "transcript normalized", {"segments": len(segments)})
+        return self._run_segments(
+            run_id,
+            trace,
+            meeting,
+            segments,
+            create_doc,
+            create_tasks,
+            send_message,
+            chat_id,
+            dry_run,
+            provider_mode=provider_mode,
+            analyzer_mode=analyzer_mode,
+        )
+
+    def _run_segments(
+        self,
+        run_id: str,
+        trace: RunTraceWriter,
+        meeting: Meeting,
+        segments: list[TranscriptSegment],
+        create_doc: bool,
+        create_tasks: bool,
+        send_message: bool,
+        chat_id: str | None,
+        dry_run: bool,
+        provider_mode: str | ProviderMode,
+        analyzer_mode: str,
+    ) -> ProcessMeetingResult:
         provider = ProviderMode(provider_mode)
         minutes = create_analyzer(analyzer_mode).analyze(meeting.meeting_id, meeting.title, segments)
         minutes = EvidenceIntegrityValidator().validate_minutes(minutes, segments)

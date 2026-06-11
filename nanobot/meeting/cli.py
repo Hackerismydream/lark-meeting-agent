@@ -11,6 +11,7 @@ from nanobot.meeting.evals import LifecycleEvaluator
 from nanobot.meeting.live import LiveMeetingWorkflow
 from nanobot.meeting.live_evidence import LiveMeetingEvidenceRunner
 from nanobot.meeting.live_lark import LiveLarkMeetingWorkflow
+from nanobot.meeting.local_listener import LocalTranscriptLiveRunner
 from nanobot.meeting.prebrief import PreBriefWorkflow
 from nanobot.meeting.schemas import (
     ApprovalStatus,
@@ -119,6 +120,20 @@ def main(argv: list[str] | None = None) -> int:
     live_evidence.add_argument("--out-root", default="runs/live_real")
     live_evidence.add_argument("--approve-visible-join", action="store_true")
     live_evidence.add_argument("--approve-visible-leave", action="store_true")
+
+    local_transcript_live = sub.add_parser("local-transcript-live")
+    local_transcript_live.add_argument("--transcript-file", required=True)
+    local_transcript_live.add_argument("--meeting-id", required=True)
+    local_transcript_live.add_argument("--title", default="local transcript meeting")
+    local_transcript_live.add_argument("--polls", type=int, default=1)
+    local_transcript_live.add_argument("--poll-interval-sec", type=float, default=0.0)
+    local_transcript_live.add_argument("--question")
+    local_transcript_live.add_argument("--finalize", action="store_true")
+    local_transcript_live.add_argument("--create-doc", action=argparse.BooleanOptionalAction, default=True)
+    local_transcript_live.add_argument("--create-tasks", action=argparse.BooleanOptionalAction, default=True)
+    local_transcript_live.add_argument("--send-message", action="store_true")
+    local_transcript_live.add_argument("--chat-id")
+    local_transcript_live.add_argument("--analyzer-mode", default="fake", choices=["fake", "llm"])
 
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--cases", default="tests/fixtures/meeting/evaluation/lifecycle_cases.json")
@@ -253,6 +268,23 @@ def main(argv: list[str] | None = None) -> int:
             args.meeting_number,
             approve_visible_join=args.approve_visible_join,
             approve_visible_leave=args.approve_visible_leave,
+        )
+        print(result.model_dump_json(indent=2))
+        return 0
+    if args.command == "local-transcript-live":
+        result = LocalTranscriptLiveRunner(workspace).run(
+            transcript_file=args.transcript_file,
+            meeting_id=args.meeting_id,
+            title=args.title,
+            max_polls=args.polls,
+            poll_interval_sec=args.poll_interval_sec,
+            question=args.question,
+            finalize=args.finalize,
+            create_doc=args.create_doc,
+            create_tasks=args.create_tasks,
+            send_message=args.send_message,
+            chat_id=args.chat_id,
+            analyzer_mode=args.analyzer_mode,
         )
         print(result.model_dump_json(indent=2))
         return 0
