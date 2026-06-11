@@ -5,8 +5,55 @@ import LarkMeetingAgentCore
 struct SmokeTests {
     static func main() async throws {
         try await statusDecodesEnvelopeAndSendsBearerToken()
+        try await pendingPlansDecodeAndApproveSendsExplicitOperationIDs()
         try inMemoryCredentialStoreRoundTripsToken()
         print("LarkMeetingAgentCore smoke tests passed")
+    }
+
+    private static func pendingPlansDecodeAndApproveSendsExplicitOperationIDs() async throws {
+        let transport = MockTransport(
+            data: """
+            {
+              "ok": true,
+              "data": {
+                "items": [
+                  {
+                    "run_id": "run-1",
+                    "status": "approval_required",
+                    "operations": [
+                      {
+                        "operation_id": "op-doc-1",
+                        "operation_type": "docs.create",
+                        "target": {"folder_token": null},
+                        "dry_run_payload": {"title": "Demo"},
+                        "preview": "Create doc",
+                        "requires_approval": true,
+                        "approval_status": "pending",
+                        "execution_status": "pending"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "error": null
+            }
+            """.data(using: .utf8)!
+        )
+        let client = AgentAPIClient(baseURL: URL(string: "http://127.0.0.1:8765")!, bearerTokenProvider: { nil }, transport: transport)
+
+        let plans = try await client.pendingWritePlans()
+
+        try assert(plans.first?.runID == "run-1", "expected pending run")
+        try assert(plans.first?.operations.first?.operationID == "op-doc-1", "expected operation")
+
+        transport.data = """
+        {"ok": true, "data": {"run_id": "run-1"}, "error": null}
+        """.data(using: .utf8)!
+        try await client.approve(runID: "run-1", operationIDs: ["op-doc-1"])
+
+        try assert(transport.lastRequest?.url?.path == "/v1/runs/run-1/approve", "expected approve path")
+        let body = try JSONSerialization.jsonObject(with: transport.lastRequest?.httpBody ?? Data()) as? [String: Any]
+        try assert((body?["operation_ids"] as? [String]) == ["op-doc-1"], "expected explicit operation_ids body")
     }
 
     private static func statusDecodesEnvelopeAndSendsBearerToken() async throws {
@@ -60,7 +107,7 @@ struct SmokeTests {
 }
 
 private final class MockTransport: HTTPTransport, @unchecked Sendable {
-    let data: Data
+    var data: Data
     var lastRequest: URLRequest?
 
     init(data: Data) {

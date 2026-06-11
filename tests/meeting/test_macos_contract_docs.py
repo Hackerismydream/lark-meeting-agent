@@ -36,3 +36,14 @@ def test_macos_contract_doc_does_not_claim_asr_or_production_release() -> None:
     assert "deferred to later v1.1 phases" in text
     assert "claim asr/audio transcription support" in text
     assert "app store release" not in text
+
+
+def test_macos_approval_inbox_doc_preserves_backend_write_boundary() -> None:
+    text = Path("docs/MACOS_APPROVAL_INBOX.md").read_text()
+
+    assert "does not execute Lark writes" in text
+    assert "Companion API" in text
+    assert "LarkToolAdapter" in text
+    assert "explicit `operation_ids`" in text
+    assert "no vague approve-all button" in text
+    assert "never calls Lark APIs" in text

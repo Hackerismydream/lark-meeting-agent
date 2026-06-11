@@ -16,6 +16,8 @@ struct StatusView: View {
                 }
             }
             Divider()
+            ApprovalInboxView()
+            Divider()
             Button("Settings...") {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }

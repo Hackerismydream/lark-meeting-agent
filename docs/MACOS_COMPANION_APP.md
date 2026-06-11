@@ -120,14 +120,16 @@ Current shell capabilities:
 - SwiftUI `MenuBarExtra` entry for Agent status.
 - Settings view for API base URL, environment label, and notification preference.
 - API client for `GET /v1/agent/status`.
+- Approval inbox for `GET /v1/write-plans/pending`.
+- Selected-operation approval through `POST /v1/runs/{run_id}/approve`.
+- Run rejection through `POST /v1/runs/{run_id}/reject`.
+- Local macOS notifications for pending approvals when enabled.
 - Bearer token injection from a credential store.
 - Keychain-backed credential store plus in-memory test store.
 - Core smoke runner covering status decode, bearer token header injection, and credential round trip.
 
 Deferred to later V1.1 phases:
 
-- approval inbox,
-- user notifications,
 - pre-brief trace viewer,
 - memory search,
 - transcript upload,
