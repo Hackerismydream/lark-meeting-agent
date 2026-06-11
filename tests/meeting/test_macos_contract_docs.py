@@ -84,3 +84,17 @@ def test_macos_security_and_packaging_docs_are_honest_about_release_state() -> N
     assert "Do not describe the app as App Store released" in packaging
     assert "No direct Lark writes occur from macOS" in qa
     assert ".mp3" in qa and ".wav" in qa and ".m4a" in qa
+
+
+def test_v1_1_release_docs_distinguish_delivered_and_planned_work() -> None:
+    report = Path("docs/V1_1_DELIVERY_REPORT.md").read_text()
+    roadmap = Path("docs/V1_2_ROADMAP.md").read_text()
+    demo = Path("docs/V1_1_DEMO_RUNBOOK.md").read_text()
+
+    assert "## Implemented" in report
+    assert "## Not Implemented" in report
+    assert "Swift smoke runner: passed" in report
+    assert "`xcodebuild` is blocked" in report
+    assert "does not call Feishu/Lark APIs directly" in demo
+    assert "Replace executable smoke runner with full Swift test target" in roadmap
+    assert "Direct Lark API calls from Swift" in roadmap
