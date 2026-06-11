@@ -15,6 +15,15 @@ Core smoke validation:
 swift run --package-path apps/macos/LarkMeetingAgent LarkMeetingAgentCoreSmokeTests
 ```
 
+Local `.app` bundle for manual QA and Computer Use:
+
+```bash
+scripts/build-macos-companion-app
+open apps/macos/LarkMeetingAgent/.build/app/LarkMeetingAgent.app
+```
+
+This bundle is unsigned and intended for local development only.
+
 ## Xcode Build Status
 
 On this workstation, `xcodebuild` is blocked because the active developer directory points to CommandLineTools instead of a full Xcode installation:
@@ -32,7 +41,7 @@ xcodebuild -scheme LarkMeetingAgent -destination 'platform=macOS' build
 
 ## Signing and Notarization
 
-Signing and notarization are not completed in this repository state.
+Signing and notarization are not completed in this repository state. The local `.app` bundle created by `scripts/build-macos-companion-app` is unsigned.
 
 To prepare a distributable app, a later release must:
 

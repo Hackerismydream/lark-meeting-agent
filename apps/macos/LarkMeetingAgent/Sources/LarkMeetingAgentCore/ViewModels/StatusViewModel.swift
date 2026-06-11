@@ -34,8 +34,13 @@ public final class StatusViewModel: ObservableObject {
         }
         do {
             let status = try await client.status()
+            let plans = try await client.pendingWritePlans()
+            pendingApprovalCount = plans.reduce(0) { total, plan in
+                total + plan.operations.filter { $0.approvalStatus == "pending" }.count
+            }
             connectionState = .connected(status)
         } catch {
+            pendingApprovalCount = 0
             connectionState = .failed("Unable to reach Agent Service")
         }
     }

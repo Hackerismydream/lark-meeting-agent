@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PACKAGE="$ROOT/apps/macos/LarkMeetingAgent"
+APP_DIR="$PACKAGE/.build/app/LarkMeetingAgent.app"
+CONTENTS="$APP_DIR/Contents"
+MACOS="$CONTENTS/MacOS"
+RESOURCES="$CONTENTS/Resources"
+
+swift build --package-path "$PACKAGE"
+
+BIN="$PACKAGE/.build/arm64-apple-macosx/debug/LarkMeetingAgent"
+if [[ ! -x "$BIN" ]]; then
+  BIN="$PACKAGE/.build/debug/LarkMeetingAgent"
+fi
+
+rm -rf "$APP_DIR"
+mkdir -p "$MACOS" "$RESOURCES"
+cp "$BIN" "$MACOS/LarkMeetingAgent"
+
+cat > "$CONTENTS/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleExecutable</key>
+  <string>LarkMeetingAgent</string>
+  <key>CFBundleIdentifier</key>
+  <string>ai.larkmeetingagent.companion</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>Lark Meeting Agent</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+
+echo "$APP_DIR"

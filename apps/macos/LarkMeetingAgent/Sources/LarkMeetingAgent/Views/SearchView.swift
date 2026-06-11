@@ -3,13 +3,21 @@ import SwiftUI
 
 struct SearchView: View {
     @ObservedObject var viewModel: SearchUploadViewModel
-    @Binding var question: String
+    @State private var question = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Search")
                 .font(.headline)
+            Text("Question")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             TextField("Ask across meetings", text: $question)
+                .onSubmit {
+                    Task {
+                        await viewModel.search(question: question)
+                    }
+                }
             Button("Search memory") {
                 Task {
                     await viewModel.search(question: question)

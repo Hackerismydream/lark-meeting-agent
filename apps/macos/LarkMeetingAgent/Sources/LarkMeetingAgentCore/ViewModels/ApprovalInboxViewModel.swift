@@ -75,6 +75,7 @@ public final class ApprovalInboxViewModel: ObservableObject {
             selectedOperationIDs.subtract(operationIDs.map { Self.selectionKey(runID: runID, operationID: $0) })
             message = "Approved \(operationIDs.count) operation(s)."
             await refresh()
+            NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
             message = "Approval failed."
         }
@@ -88,6 +89,7 @@ public final class ApprovalInboxViewModel: ObservableObject {
             selectedOperationIDs.subtract(selectedOperationIDsForRun(runID).map { Self.selectionKey(runID: runID, operationID: $0) })
             message = "Rejected run \(runID)."
             await refresh()
+            NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
             message = "Reject failed."
         }

@@ -52,3 +52,19 @@ Failure:
 Approval requests must include explicit operation IDs. The API delegates approval/rejection to the existing backend policy and workflows. It does not call Lark APIs directly.
 
 Transcript upload accepts `.txt`, `.md`, and `.json` text files only. V1.1 does not implement ASR.
+
+## Local Server
+
+Start the local Companion API server for the macOS app:
+
+```bash
+uv run python -m nanobot.meeting.companion_server --workspace . --host 127.0.0.1 --port 8765
+```
+
+Optional local SQLite run state:
+
+```bash
+uv run python -m nanobot.meeting.companion_server --workspace . --sqlite
+```
+
+The server is only an HTTP wrapper around `CompanionApiService`. It is not a second Agent runtime and does not call Lark APIs directly.

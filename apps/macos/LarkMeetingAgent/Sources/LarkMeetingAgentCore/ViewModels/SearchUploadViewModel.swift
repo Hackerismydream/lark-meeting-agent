@@ -60,6 +60,7 @@ public final class SearchUploadViewModel: ObservableObject {
                 sendMessage: sendMessage,
                 chatID: chatID?.isEmpty == true ? nil : chatID
             )
+            NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
         } catch {
             message = "Transcript upload failed."
         }

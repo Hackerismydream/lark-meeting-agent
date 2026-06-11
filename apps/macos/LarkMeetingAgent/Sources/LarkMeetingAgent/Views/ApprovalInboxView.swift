@@ -39,6 +39,11 @@ struct ApprovalInboxView: View {
         .task {
             await viewModel.refresh()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .larkMeetingAgentRunsChanged)) { _ in
+            Task {
+                await viewModel.refresh()
+            }
+        }
     }
 
     private func planView(_ plan: PendingWritePlan) -> some View {
