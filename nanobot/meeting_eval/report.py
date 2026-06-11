@@ -15,11 +15,15 @@ def write_eval_outputs(
     metrics: dict[str, Any],
     predictions: list[EvalPrediction],
     failures: list[dict[str, Any]],
+    metadata: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     root = Path(out_dir)
     root.mkdir(parents=True, exist_ok=True)
     report_path = root / "report.json"
-    report_path.write_text(json.dumps({"metrics": metrics, "failures": failures}, ensure_ascii=False, indent=2), encoding="utf-8")
+    report_path.write_text(
+        json.dumps({"metadata": metadata or {}, "metrics": metrics, "failures": failures}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     trace_path = write_jsonl(
         [
             {"event_type": "eval_observation", "message": "suite_report_written", "data": {"metrics": sorted(metrics)}},

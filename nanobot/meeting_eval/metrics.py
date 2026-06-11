@@ -66,21 +66,33 @@ def _span_scores(tasks: list[EvalTask], predictions: dict[str, EvalPrediction]) 
 
 
 def _trace_completeness(run_dirs: list[Path]) -> float:
-    required = {"tool_call_started", "tool_call_succeeded", "artifact_created", "eval_observation"}
+    required_sets = [
+        {"tool_call_started", "tool_call_succeeded", "artifact_created", "eval_observation"},
+        {"workflow_started", "workflow_completed", "artifact_created", "eval_observation"},
+    ]
     return _rate(
         run_dirs,
-        lambda path: required.issubset({row.get("event_type") for row in read_jsonl(path / "trace.jsonl")}),
+        lambda path: any(required.issubset({row.get("event_type") for row in read_jsonl(path / "trace.jsonl")}) for required in required_sets),
     )
 
 
 def _artifact_consistency(run_dirs: list[Path]) -> float:
-    required = [
-        "artifacts/minutes.md",
-        "artifacts/action_items.json",
-        "artifacts/decisions.json",
-        "artifacts/follow_up_message.md",
+    required_sets = [
+        [
+            "artifacts/minutes.md",
+            "artifacts/action_items.json",
+            "artifacts/decisions.json",
+            "artifacts/follow_up_message.md",
+        ],
+        [
+            "artifacts/prebrief.md",
+            "artifacts/live_state_snapshots.jsonl",
+            "artifacts/minutes.md",
+            "artifacts/write_plan.json",
+            "artifacts/qa_answers.jsonl",
+        ],
     ]
-    return _rate(run_dirs, lambda path: all((path / name).exists() for name in required))
+    return _rate(run_dirs, lambda path: any(all((path / name).exists() for name in required) for required in required_sets))
 
 
 def _streaming_stability(fixtures: list[MeetingFixture]) -> float:
