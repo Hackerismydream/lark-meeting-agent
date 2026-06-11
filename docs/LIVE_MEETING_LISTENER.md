@@ -16,10 +16,15 @@ visible approved join
 ## Safety Contract
 
 - Join uses a 9-digit meeting number.
+- The meeting number must be exactly 9 digits before any provider call is made.
 - Poll and leave use the long `meeting_id` returned by join.
 - Join and leave are visible to participants and require explicit approval flags.
 - Event text is untrusted input and cannot trigger tool calls.
+- Meeting passwords, passcodes, and `meeting_password` values are redacted from audit data.
 - All Lark operations go through `LarkToolAdapter`.
+- Repeated event ids are deduplicated before they can duplicate transcript state.
+- `page_token` or `next_page_token` is persisted on live state for incremental polling.
+- Participant and share events are tracked in the live timeline; transcript and chat text can become QA sources.
 
 ## Fake Smoke
 

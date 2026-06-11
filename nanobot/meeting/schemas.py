@@ -388,6 +388,10 @@ class LiveMeetingState(MeetingBaseModel):
     title: str = "live meeting"
     current_topic: str | None = None
     rolling_summary: str = ""
+    event_timeline: list[dict[str, Any]] = Field(default_factory=list)
+    seen_event_ids: list[str] = Field(default_factory=list)
+    page_token: str | None = None
+    has_more: bool = False
     transcript_segments: list[TranscriptSegment] = Field(default_factory=list)
     decision_candidates: list[LiveDecisionCandidate] = Field(default_factory=list)
     action_candidates: list[LiveActionCandidate] = Field(default_factory=list)

@@ -41,6 +41,20 @@ class LiveMeetingWorkflow:
             state = self.memory.load_live_state(event.live_run_id)
         except Exception:
             state = LiveMeetingState(live_run_id=event.live_run_id, meeting_id=event.meeting_id)
+        if event.event_id in state.seen_event_ids:
+            return state
+        state.seen_event_ids.append(event.event_id)
+        state.event_timeline.append(
+            {
+                "event_id": event.event_id,
+                "kind": event.kind.value,
+                "meeting_id": event.meeting_id,
+                "text": event.text,
+                "speaker_name": event.speaker_name,
+                "timestamp": event.timestamp,
+                "segment_id": event.segment_id,
+            }
+        )
         if event.kind == LiveEventKind.TOPIC_CHANGE and event.text:
             state.current_topic = event.text.strip()
         if event.kind == LiveEventKind.TRANSCRIPT_DELTA and event.text:

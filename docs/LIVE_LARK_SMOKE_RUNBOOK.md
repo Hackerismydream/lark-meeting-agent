@@ -37,10 +37,23 @@ scripts/lma-real live-leave \
 
 - missing permission,
 - not in gray release,
+- invalid 9-digit meeting number,
 - bot not in meeting,
 - meeting ended,
 - no transcript event emitted,
 - page token issue,
 - unknown event shape.
+
+## Pre-Smoke Hardening Checks
+
+Before real smoke, default tests verify:
+
+- invalid meeting numbers are rejected before provider calls,
+- meeting passwords/passcodes are redacted in audit events,
+- chat events can become source-grounded QA evidence,
+- participant/share events enter the live timeline,
+- duplicate event ids do not duplicate state,
+- page tokens are persisted,
+- join/leave without approval are rejected.
 
 Do not fabricate smoke success. If no live meeting is available, record it as not run.

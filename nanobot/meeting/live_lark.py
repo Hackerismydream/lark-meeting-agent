@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from pydantic import Field
 
+from nanobot.meeting.errors import ToolExecutionError
 from nanobot.meeting.lark_adapter import LarkToolAdapter
 from nanobot.meeting.live import LiveMeetingWorkflow
 from nanobot.meeting.schemas import (
@@ -55,6 +56,8 @@ class LiveLarkMeetingWorkflow:
         approval_status: ApprovalStatus | str | None = None,
         title: str = "live meeting",
     ) -> LiveLarkSession:
+        if not _valid_meeting_number(meeting_number):
+            raise ToolExecutionError("meeting_number must be exactly 9 digits")
         payload = {"meeting_number": meeting_number}
         if password:
             payload["password"] = password
@@ -106,23 +109,25 @@ class LiveLarkMeetingWorkflow:
         if end:
             payload["end"] = end
         raw = self.adapter.execute("vc.meeting.events", payload)
-        session = LiveLarkSession(
-            live_run_id=live_run_id,
-            meeting_id=meeting_id,
-            page_token=_page_token(raw),
-        )
+        session = LiveLarkSession(live_run_id=live_run_id, meeting_id=meeting_id, page_token=page_token)
+        return self.ingest_raw_events(session, raw)
+
+    def ingest_raw_events(self, session: LiveLarkSession, raw: dict[str, Any]) -> LiveLarkPollResult:
         events = self.convert_events(raw, session=session)
-        state: LiveMeetingState | None = None
         for event in events:
-            state = self.live.ingest(event)
-        if state is None:
-            state = self.live.memory.load_live_state(live_run_id)
+            self.live.ingest(event)
+        state = self.live.memory.load_live_state(session.live_run_id)
+        state.page_token = _page_token(raw) or session.page_token
+        state.has_more = bool(raw.get("has_more") or raw.get("data", {}).get("has_more"))
+        self.live.memory.save_live_state(state)
+        updated_session = session.model_copy(update={"page_token": state.page_token})
+        converted_count = sum(1 for event in events if event.event_id in state.seen_event_ids)
         return LiveLarkPollResult(
-            session=session,
+            session=updated_session,
             state=state,
             raw=raw,
-            page_token=session.page_token,
-            converted_event_count=len(events),
+            page_token=state.page_token,
+            converted_event_count=converted_count,
         )
 
     def leave(
@@ -179,7 +184,7 @@ class LiveLarkMeetingWorkflow:
 
 
 def _event_kind(event_type: str) -> LiveEventKind:
-    if event_type in {"transcript_received", "chat_received"}:
+    if event_type in {"transcript_received", "chat_received", "message_received"}:
         return LiveEventKind.TRANSCRIPT_DELTA
     if event_type == "participant_joined":
         return LiveEventKind.PARTICIPANT_JOIN
@@ -215,9 +220,13 @@ def _speaker_name(item: dict[str, Any]) -> str | None:
 
 
 def _page_token(raw: dict[str, Any]) -> str | None:
-    token = raw.get("page_token") or raw.get("next_page_token") or raw.get("data", {}).get("page_token")
+    token = raw.get("next_page_token") or raw.get("page_token") or raw.get("data", {}).get("next_page_token") or raw.get("data", {}).get("page_token")
     return str(token) if token else None
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _valid_meeting_number(value: str) -> bool:
+    return len(value) == 9 and value.isdigit()

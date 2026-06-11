@@ -609,7 +609,16 @@ class LarkToolAdapter:
 
     def redact(self, value: str) -> str:
         redacted = re.sub(r"sk-[A-Za-z0-9_\-]+", "[REDACTED]", value)
-        redacted = re.sub(r"(?i)(app_secret|access_token|refresh_token|authorization|cookie)=\S+", r"\1=[REDACTED]", redacted)
+        redacted = re.sub(
+            r"(?i)(app_secret|access_token|refresh_token|authorization|cookie|password|passcode|meeting_password)=\S+",
+            r"\1=[REDACTED]",
+            redacted,
+        )
+        redacted = re.sub(
+            r'(?i)"(password|passcode|meeting_password)"\s*:\s*"[^"]*"',
+            r'"\1": "[REDACTED]"',
+            redacted,
+        )
         redacted = re.sub(r"(?i)Bearer\s+\S+", "Bearer [REDACTED]", redacted)
         return redacted
 
