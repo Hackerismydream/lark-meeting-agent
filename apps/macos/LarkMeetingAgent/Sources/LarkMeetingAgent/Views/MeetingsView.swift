@@ -6,10 +6,10 @@ struct MeetingsView: View {
     let source: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Today")
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
                 if let source {
                     Text(source)
                         .font(.caption)
@@ -17,9 +17,13 @@ struct MeetingsView: View {
                 }
             }
             if meetings.isEmpty {
-                Text("No meetings from backend")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                        .foregroundStyle(.secondary)
+                    Text("No meetings from backend")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 ForEach(meetings) { meeting in
                     VStack(alignment: .leading, spacing: 2) {
@@ -32,5 +36,15 @@ struct MeetingsView: View {
                 }
             }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .textBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
+        )
     }
 }

@@ -3,48 +3,32 @@ import SwiftUI
 
 struct StatusView: View {
     @ObservedObject var viewModel: StatusViewModel
+    @StateObject private var searchUploadViewModel = SearchUploadViewModel()
     @State private var settingsPresented = false
+    @State private var selectedSection: WorkspaceSection = .approvals
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
+        VStack(spacing: 0) {
+            topBar
             Divider()
-            TabView {
+            HStack(spacing: 0) {
                 ScrollView {
-                    ApprovalInboxView()
-                        .padding()
+                    mainContent
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 26)
                 }
-                .tabItem {
-                    Text("Approvals")
-                }
-
-                ScrollView {
-                    PreBriefTracePanelView()
-                        .padding()
-                }
-                .tabItem {
-                    Text("Pre-brief")
-                }
-
-                ScrollView {
-                    SearchUploadPanelView()
-                        .padding()
-                }
-                .tabItem {
-                    Text("Search & Upload")
-                }
-            }
-            HStack {
-                Button("Settings...") {
-                    settingsPresented = true
-                }
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
-                }
+                .background(Color(nsColor: .windowBackgroundColor))
+                Divider()
+                MeetingSummaryRailView(
+                    connectionState: viewModel.connectionState,
+                    pendingApprovalCount: viewModel.pendingApprovalCount,
+                    selectedSection: selectedSection.title,
+                    settingsPresented: $settingsPresented
+                )
             }
         }
-        .padding()
-        .frame(minWidth: 520, minHeight: 640)
+        .frame(minWidth: 980, minHeight: 640)
+        .background(Color(nsColor: .windowBackgroundColor))
         .task {
             await viewModel.refreshStatus()
         }
@@ -58,16 +42,53 @@ struct StatusView: View {
         }
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Lark Meeting Agent")
-                .font(.headline)
-            Text(statusText)
-            Text("Pending approvals: \(viewModel.pendingApprovalCount)")
-            Button("Refresh") {
-                Task {
-                    await viewModel.refreshStatus()
+    private var topBar: some View {
+        ZStack {
+            HStack {
+                Spacer()
+                Button {
+                    Task {
+                        await viewModel.refreshStatus()
+                    }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
                 }
+                .buttonStyle(.bordered)
+            }
+            .padding(.horizontal, 28)
+
+            Picker("", selection: $selectedSection) {
+                ForEach(WorkspaceSection.allCases) { section in
+                    Text(section.title).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 520)
+        }
+        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        switch selectedSection {
+        case .approvals:
+            ApprovalInboxView()
+        case .preBrief:
+            PreBriefTracePanelView()
+        case .search:
+            SearchView(viewModel: searchUploadViewModel)
+        case .upload:
+            UploadTranscriptView(viewModel: searchUploadViewModel)
+            if searchUploadViewModel.isLoading {
+                ProgressView()
+                    .padding(.top, 12)
+            }
+            if let message = searchUploadViewModel.message {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
             }
         }
     }
@@ -82,6 +103,39 @@ struct StatusView: View {
             return "Connected: \(status.environmentSummary)"
         case .failed:
             return "Disconnected"
+        }
+    }
+
+    private var statusColor: Color {
+        switch viewModel.connectionState {
+        case .connected:
+            return .green
+        case .connecting:
+            return .orange
+        case .disconnected, .failed:
+            return .red
+        }
+    }
+}
+
+enum WorkspaceSection: String, CaseIterable, Identifiable {
+    case approvals
+    case preBrief
+    case search
+    case upload
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .approvals:
+            return "Approvals"
+        case .preBrief:
+            return "Pre-brief"
+        case .search:
+            return "Search"
+        case .upload:
+            return "Upload"
         }
     }
 }

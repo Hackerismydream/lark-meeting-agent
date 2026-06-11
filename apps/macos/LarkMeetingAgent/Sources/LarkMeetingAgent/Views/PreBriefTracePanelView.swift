@@ -10,7 +10,14 @@ struct PreBriefTracePanelView: View {
     @State private var customer = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pre-brief")
+                    .font(.system(size: 22, weight: .semibold))
+                Text("Prepare context, open questions, and source-backed reminders before a meeting.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+            }
             MeetingsView(meetings: viewModel.meetings, source: viewModel.meetingsSource)
             preBriefForm
             PreBriefView(preBrief: viewModel.preBrief)
@@ -51,13 +58,21 @@ struct PreBriefTracePanelView: View {
     private var preBriefForm: some View {
         VStack(alignment: .leading, spacing: 6) {
             labeledTextField("Meeting query", text: $query)
-            labeledTextField("Meeting ID", text: $meetingID)
-            labeledTextField("Meeting type", text: $meetingType)
-            labeledTextField("Project", text: $project)
-            labeledTextField("Customer", text: $customer)
-            Button("Generate pre-brief") {
-                generatePreBrief()
+            HStack(spacing: 10) {
+                labeledTextField("Meeting ID", text: $meetingID)
+                labeledTextField("Meeting type", text: $meetingType)
             }
+            HStack(spacing: 10) {
+                labeledTextField("Project", text: $project)
+                labeledTextField("Customer", text: $customer)
+            }
+            Button {
+                generatePreBrief()
+            } label: {
+                Label("Generate pre-brief", systemImage: "sparkles")
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top, 4)
         }
     }
 
@@ -67,6 +82,7 @@ struct PreBriefTracePanelView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField(label, text: text)
+                .textFieldStyle(.roundedBorder)
                 .onSubmit {
                     generatePreBrief()
                 }

@@ -8,18 +8,28 @@ struct RunTraceView: View {
     let inspectRun: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Runs")
-                .font(.headline)
+                .font(.system(size: 15, weight: .semibold))
             if runs.isEmpty {
                 Text("No runs from backend")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(runs) { run in
-                    Button("\(run.runID) - \(run.status)") {
+                    Button {
                         inspectRun(run.runID)
+                    } label: {
+                        HStack {
+                            Image(systemName: run.status == "completed" ? "checkmark.circle.fill" : "clock")
+                                .foregroundStyle(run.status == "completed" ? .green : .orange)
+                            Text("\(run.runID) - \(run.status)")
+                                .lineLimit(1)
+                            Spacer()
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 5)
                 }
             }
             if let selectedRun {
@@ -62,6 +72,15 @@ struct RunTraceView: View {
                 }
             }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .textBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
+        )
     }
 
     private func render(_ values: [String: JSONValue]) -> String {

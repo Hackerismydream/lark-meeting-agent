@@ -11,17 +11,28 @@ struct UploadTranscriptView: View {
     @State private var chatID = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Upload transcript")
-                .font(.headline)
-            Toggle("Create doc preview", isOn: $createDoc)
-            Toggle("Create task previews", isOn: $createTasks)
-            Toggle("Prepare IM preview", isOn: $sendMessage)
-            TextField("Chat ID", text: $chatID)
-                .disabled(!sendMessage)
-            Button("Choose .txt/.md/.json") {
-                importerPresented = true
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Upload")
+                    .font(.system(size: 22, weight: .semibold))
+                Text("Create a dry-run write plan from a local text transcript.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
             }
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle("Create doc preview", isOn: $createDoc)
+                Toggle("Create task previews", isOn: $createTasks)
+                Toggle("Prepare IM preview", isOn: $sendMessage)
+            }
+            TextField("Chat ID", text: $chatID)
+                .textFieldStyle(.roundedBorder)
+                .disabled(!sendMessage)
+            Button {
+                importerPresented = true
+            } label: {
+                Label("Choose .txt/.md/.json", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.borderedProminent)
             .fileImporter(
                 isPresented: $importerPresented,
                 allowedContentTypes: [.plainText, .json],
@@ -40,13 +51,32 @@ struct UploadTranscriptView: View {
                 }
             }
             if let upload = viewModel.uploadResult {
-                Text("Run \(upload.runID): \(upload.status)")
-                    .font(.caption)
-                ForEach(upload.errors, id: \.self) { error in
-                    Text("Error: \(error)")
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Run \(upload.runID)")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    Text(upload.status)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.secondary)
+                    ForEach(upload.errors, id: \.self) { error in
+                        Text("Error: \(error)")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(nsColor: .textBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
+                )
             }
         }
     }

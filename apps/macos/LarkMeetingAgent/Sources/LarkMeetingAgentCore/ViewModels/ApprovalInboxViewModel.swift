@@ -82,6 +82,20 @@ public final class ApprovalInboxViewModel: ObservableObject {
         isLoading = false
     }
 
+    public func approveOperation(runID: String, operationID: String) async {
+        isLoading = true
+        do {
+            try await makeClient().approve(runID: runID, operationIDs: [operationID])
+            selectedOperationIDs.remove(Self.selectionKey(runID: runID, operationID: operationID))
+            message = "Approved \(operationID)."
+            await refresh()
+            NotificationCenter.default.post(name: .larkMeetingAgentRunsChanged, object: nil)
+        } catch {
+            message = "Approval failed."
+        }
+        isLoading = false
+    }
+
     public func reject(runID: String) async {
         isLoading = true
         do {

@@ -5,28 +5,34 @@ struct PreBriefView: View {
     let preBrief: PreBrief?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Pre-brief")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
             if let preBrief {
-                Text(preBrief.goal)
-                    .font(.subheadline)
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .foregroundStyle(.blue)
+                    Text(preBrief.goal)
+                        .font(.system(size: 15, weight: .semibold))
+                }
                 ForEach(preBrief.sections, id: \.title) { section in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(section.title)
-                            .font(.caption)
+                            .font(.system(size: 13))
                             .fontWeight(.semibold)
                         ForEach(section.bullets, id: \.self) { bullet in
-                            Text("- \(bullet)")
-                                .font(.caption)
+                            Text("• \(bullet)")
+                                .font(.system(size: 13))
                         }
                         ForEach(section.sources, id: \.sourceID) { source in
-                            Text("Source: \(source.sourceLabel)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
+                            SourceCitationView(source: source)
+                                .padding(8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color(nsColor: .controlBackgroundColor))
+                                )
                         }
                     }
+                    .padding(.vertical, 4)
                 }
                 if !preBrief.warnings.isEmpty {
                     Text("Warnings: \(preBrief.warnings.joined(separator: ", "))")
@@ -39,6 +45,15 @@ struct PreBriefView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .textBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
+        )
     }
 }
 
