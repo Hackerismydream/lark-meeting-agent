@@ -1,0 +1,52 @@
+{
+  "datasets": {
+    "meetingbank": {
+      "count": 10,
+      "fixture_ids": [
+        "meetingbank-AlamedaCC_01022019_2019-6350",
+        "meetingbank-AlamedaCC_12202016_2016-3661",
+        "meetingbank-BostonCC_05182022",
+        "meetingbank-DenverCityCouncil_08222016",
+        "meetingbank-DenverCityCouncil_12062021",
+        "meetingbank-LongBeachCC_02142017",
+        "meetingbank-LongBeachCC_02162021_21-0147",
+        "meetingbank-LongBeachCC_06162015_15-0546",
+        "meetingbank-SeattleCityCouncil_11222021_CF 314488",
+        "meetingbank-SeattleCityCouncil_12072020_CB 119954"
+      ]
+    },
+    "qmsum": {
+      "count": 10,
+      "fixture_ids": [
+        "qmsum-qmsum-0095",
+        "qmsum-qmsum-0106",
+        "qmsum-qmsum-0249",
+        "qmsum-qmsum-0344",
+        "qmsum-qmsum-0347",
+        "qmsum-qmsum-0354",
+        "qmsum-qmsum-0424",
+        "qmsum-qmsum-0491",
+        "qmsum-qmsum-0621",
+        "qmsum-qmsum-0667"
+      ]
+    },
+    "vcsum": {
+      "count": 10,
+      "fixture_ids": [
+        "vcsum-16",
+        "vcsum-166_2",
+        "vcsum-17_2",
+        "vcsum-199_7",
+        "vcsum-234_4",
+        "vcsum-42",
+        "vcsum-4_2",
+        "vcsum-52_0",
+        "vcsum-69_0",
+        "vcsum-85_2"
+      ]
+    }
+  },
+  "fixture_count": 30,
+  "generated_at": "2026-06-11T09:01:26.805957+00:00",
+  "seed": 20260611
+}

@@ -103,3 +103,10 @@ temp/
 *.tmp
 exp/
 .playwright-mcp/
+
+# Local data and run artifacts
+data/raw/**
+!data/raw/
+!data/raw/README.md
+data/processed/meeting_fixtures/**/*.json
+runs/

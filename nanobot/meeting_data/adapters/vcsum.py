@@ -30,21 +30,24 @@ def load_records(raw_root: Path | str) -> list[dict[str, Any]]:
     if not root.exists():
         raise FileNotFoundError(DOWNLOAD_INSTRUCTIONS)
     records: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("*.json")) + sorted(root.rglob("*.jsonl")):
-        if path.suffix == ".jsonl":
+    for path in sorted(root.rglob("*.json")) + sorted(root.rglob("*.jsonl")) + sorted(root.rglob("*.txt")):
+        if path.suffix in {".jsonl", ".txt"}:
             for line in path.read_text(encoding="utf-8").splitlines():
                 if line.strip():
-                    item = json.loads(line)
+                    try:
+                        item = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
                     if isinstance(item, dict):
                         item.setdefault("_source_path", str(path))
+                        item.setdefault("_source_split", _split_from_path(path))
                         records.append(item)
         else:
             data = json.loads(path.read_text(encoding="utf-8"))
-            values = data if isinstance(data, list) else [data]
-            for item in values:
-                if isinstance(item, dict):
-                    item.setdefault("_source_path", str(path))
-                    records.append(item)
+            for item in _iter_records(data):
+                item.setdefault("_source_path", str(path))
+                item.setdefault("_source_split", _split_from_path(path))
+                records.append(item)
     if not records:
         raise FileNotFoundError(DOWNLOAD_INSTRUCTIONS)
     return records
@@ -67,7 +70,7 @@ def record_to_fixture(record: dict[str, Any], index: int = 0) -> MeetingFixture:
         provenance=Provenance(
             source_id=source_id,
             source_path=_optional_str(record.get("_source_path")),
-            source_split=_optional_str(_first(record, "split", default="unknown")),
+            source_split=_optional_str(_first(record, "split", "_source_split", default="unknown")),
             source_domain="Chinese meeting",
             license="VCSum research dataset",
             url="https://github.com/hahahawu/VCSum",
@@ -84,9 +87,17 @@ def record_to_fixture(record: dict[str, Any], index: int = 0) -> MeetingFixture:
     )
 
 
-def prepare_tiny10(raw_root: Path | str, out_root: Path | str, manifest_path: Path | str) -> list[MeetingFixture]:
+def prepare_tiny10(
+    raw_root: Path | str,
+    out_root: Path | str,
+    manifest_path: Path | str,
+    *,
+    limit: int = 10,
+    seed: int = 20260611,
+) -> list[MeetingFixture]:
     records = [record for record in load_records(raw_root) if _first(record, "context", "transcript")]
-    selected = deterministic_sample(records, 10)
+    records = sorted(records, key=_score_record, reverse=True)
+    selected = deterministic_sample(records, limit, seed=seed)
     fixtures = [record_to_fixture(record, index) for index, record in enumerate(selected)]
     out = Path(out_root)
     rows: list[dict[str, Any]] = []
@@ -104,7 +115,7 @@ def _turns(record: dict[str, Any]) -> list[TranscriptTurn]:
     if isinstance(context, str):
         parts = [part.strip() for part in context.splitlines() if part.strip()]
     elif isinstance(context, list):
-        parts = [str(part.get("text") if isinstance(part, dict) else part).strip() for part in context]
+        parts = _flatten_text_parts(context)
     else:
         parts = []
     turns = []
@@ -114,8 +125,6 @@ def _turns(record: dict[str, Any]) -> list[TranscriptTurn]:
         speaker = None
         if isinstance(speakers, list) and index < len(speakers):
             speaker = str(speakers[index])
-        elif isinstance(context, list) and isinstance(context[index], dict):
-            speaker = _optional_str(_first(context[index], "speaker", "speaker_name"))
         turns.append(TranscriptTurn(turn_id=f"turn-{index + 1:04d}", speaker=speaker, text=text, start_sec=float(index * 10)))
     if not turns:
         raise ValueError("VCSum record has no context text")
@@ -142,7 +151,16 @@ def _segments(record: dict[str, Any], turns: list[TranscriptTurn], agenda: list[
     discussions = record.get("discussion") or record.get("segment_summaries") or []
     if isinstance(discussions, str):
         discussions = [discussions]
-    boundaries = [int(value) for value in eos] if isinstance(eos, list) and eos else [len(turns) - 1]
+    context = _first(record, "context", "transcript", default=[])
+    grouped_lengths = _grouped_lengths(context)
+    if grouped_lengths:
+        boundaries = []
+        total = 0
+        for length in grouped_lengths:
+            total += length
+            boundaries.append(total - 1)
+    else:
+        boundaries = [int(value) for value in eos] if isinstance(eos, list) and eos else [len(turns) - 1]
     segments: list[TopicSegment] = []
     start = 0
     for index, end in enumerate(boundaries):
@@ -167,6 +185,9 @@ def _highlight_turn_ids(record: dict[str, Any], turns: list[TranscriptTurn]) -> 
     highlights = record.get("highlights") or record.get("salient_sentences") or []
     if not isinstance(highlights, list):
         return []
+    flags = _flatten_ints(highlights)
+    if flags:
+        return [turns[index].turn_id for index, value in enumerate(flags[: len(turns)]) if value == 1]
     ids: list[str] = []
     for value in highlights:
         if isinstance(value, int) and 0 <= value < len(turns):
@@ -185,6 +206,72 @@ def _first(mapping: dict[str, Any], *keys: str, default: Any = None) -> Any:
         if value not in (None, ""):
             return value
     return default
+
+
+def _iter_records(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if isinstance(data, dict):
+        for key in ("data", "items", "records", "meetings"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        return [data]
+    return []
+
+
+def _score_record(record: dict[str, Any]) -> tuple[int, int, int, int, int]:
+    has_speaker = int(bool(record.get("speaker") or record.get("speakers")))
+    has_eos = int(bool(record.get("eos_index") or record.get("eos_indices")))
+    has_summary = int(bool(_first(record, "summary", "overall_summary")))
+    has_discussion = int(bool(record.get("discussion") or record.get("segment_summaries")))
+    length = len(_flatten_text_parts(_first(record, "context", "transcript", default=[])))
+    return has_summary, has_eos, has_discussion, has_speaker, length
+
+
+def _flatten_text_parts(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, dict):
+        text = value.get("text") or value.get("content") or value.get("utterance")
+        return [str(text).strip()] if text else []
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            parts.extend(_flatten_text_parts(item))
+        return [part for part in parts if part]
+    return []
+
+
+def _grouped_lengths(value: Any) -> list[int]:
+    if not isinstance(value, list) or not value:
+        return []
+    lengths: list[int] = []
+    for item in value:
+        if isinstance(item, list):
+            length = len(_flatten_text_parts(item))
+            if length:
+                lengths.append(length)
+    return lengths
+
+
+def _flatten_ints(value: Any) -> list[int]:
+    if isinstance(value, int):
+        return [value]
+    if isinstance(value, list):
+        values: list[int] = []
+        for item in value:
+            values.extend(_flatten_ints(item))
+        return values
+    return []
+
+
+def _split_from_path(path: Path) -> str:
+    lowered = str(path).lower()
+    for split in ("dev", "test", "train"):
+        if split in lowered:
+            return "validation" if split == "dev" else split
+    return "unknown"
 
 
 def _optional_str(value: Any) -> str | None:

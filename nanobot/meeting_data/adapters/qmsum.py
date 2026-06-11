@@ -32,11 +32,11 @@ def load_records(raw_root: Path | str) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for path in sorted(root.rglob("*.json")):
         data = json.loads(path.read_text(encoding="utf-8"))
-        values = data if isinstance(data, list) else [data]
-        for item in values:
-            if isinstance(item, dict):
-                item.setdefault("_source_path", str(path))
-                records.append(item)
+        for item in _iter_records(data):
+            item.setdefault("_source_path", str(path))
+            item.setdefault("_source_domain", _domain_from_path(path))
+            item.setdefault("_source_split", _split_from_path(path))
+            records.append(item)
     if not records:
         raise FileNotFoundError(DOWNLOAD_INSTRUCTIONS)
     return records
@@ -55,7 +55,7 @@ def record_to_fixture(record: dict[str, Any], index: int = 0) -> MeetingFixture:
         provenance=Provenance(
             source_id=source_id,
             source_path=_optional_str(record.get("_source_path")),
-            source_split=_optional_str(_first(record, "split", default="unknown")),
+            source_split=_optional_str(_first(record, "split", "_source_split", default="unknown")),
             source_domain=domain,
             license="QMSum research dataset",
             url="https://github.com/Yale-LILY/QMSum",
@@ -68,24 +68,33 @@ def record_to_fixture(record: dict[str, Any], index: int = 0) -> MeetingFixture:
     )
 
 
-def prepare_tiny10(raw_root: Path | str, out_root: Path | str, manifest_path: Path | str) -> list[MeetingFixture]:
+def prepare_tiny10(
+    raw_root: Path | str,
+    out_root: Path | str,
+    manifest_path: Path | str,
+    *,
+    limit: int = 10,
+    seed: int = 20260611,
+) -> list[MeetingFixture]:
     fixtures = [record_to_fixture(record, index) for index, record in enumerate(load_records(raw_root))]
     fixtures = [fixture for fixture in fixtures if fixture.queries]
+    fixtures = sorted(fixtures, key=_score_fixture, reverse=True)
     selected = stratified_sample(
         fixtures,
         lambda fixture: fixture.meta.domain or "Committee",
         {"Product": 4, "Academic": 3, "Committee": 3},
+        seed=seed,
     )
-    if len(selected) < 10:
-        selected.extend([fixture for fixture in fixtures if fixture not in selected][: 10 - len(selected)])
+    if len(selected) < limit:
+        selected.extend([fixture for fixture in fixtures if fixture not in selected][: limit - len(selected)])
     out = Path(out_root)
     rows: list[dict[str, Any]] = []
-    for fixture in selected[:10]:
+    for fixture in selected[:limit]:
         path = out / f"{fixture.fixture_id}.json"
         save_fixture(fixture, path)
         rows.append(_manifest(fixture, path, "deterministic stratified tiny10 with answer-bearing queries"))
     write_manifest(rows, manifest_path)
-    return selected[:10]
+    return selected[:limit]
 
 
 def _turns(record: dict[str, Any]) -> list[TranscriptTurn]:
@@ -135,9 +144,10 @@ def _queries(record: dict[str, Any], turns: list[TranscriptTurn]) -> list[Meetin
     for key in ("general_query_list", "specific_query_list", "queries"):
         value = record.get(key)
         if isinstance(value, list):
-            raw_queries.extend(value)
+            query_type = "general" if key.startswith("general") else "specific"
+            raw_queries.extend((query_type, item) for item in value)
     queries: list[MeetingQuery] = []
-    for index, item in enumerate(raw_queries):
+    for index, (query_type, item) in enumerate(raw_queries):
         if not isinstance(item, dict):
             continue
         answer = _optional_str(_first(item, "answer", "summary", "reference_answer"))
@@ -150,7 +160,7 @@ def _queries(record: dict[str, Any], turns: list[TranscriptTurn]) -> list[Meetin
                 query_id=f"query-{index + 1:03d}",
                 question=question,
                 reference_answer=answer,
-                query_type="general" if "general" in str(item.get("query_type", "")).lower() else "specific",
+                query_type=str(item.get("query_type") or query_type),
                 relevant_turn_ids=relevant,
                 insufficient_evidence=answer is None,
             )
@@ -186,13 +196,57 @@ def _relevant_turn_ids(item: dict[str, Any], turns: list[TranscriptTurn]) -> lis
 
 
 def _domain(record: dict[str, Any], source_id: str) -> str:
-    value = str(_first(record, "domain", "meeting_type", default="")).lower()
+    value = str(_first(record, "domain", "meeting_type", "_source_domain", default="")).lower()
     joined = f"{value} {source_id.lower()}"
     if "product" in joined:
         return "Product"
     if "academic" in joined or "ami" in joined:
         return "Academic"
     return "Committee"
+
+
+def _iter_records(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if isinstance(data, dict):
+        for key in ("data", "meetings", "items", "records"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        return [data]
+    return []
+
+
+def _domain_from_path(path: Path) -> str:
+    lowered = str(path).lower()
+    if "product" in lowered:
+        return "Product"
+    if "academic" in lowered:
+        return "Academic"
+    if "committee" in lowered:
+        return "Committee"
+    return "Committee"
+
+
+def _split_from_path(path: Path) -> str:
+    parts = {part.lower() for part in path.parts}
+    if "val" in parts or "dev" in parts:
+        return "validation"
+    if "test" in parts:
+        return "test"
+    if "train" in parts:
+        return "train"
+    if "all" in parts:
+        return "all"
+    return "unknown"
+
+
+def _score_fixture(fixture: MeetingFixture) -> tuple[int, int, int, int]:
+    has_specific_span = int(any(query.relevant_turn_ids and query.query_type == "specific" for query in fixture.queries))
+    multi_span = int(any(len(query.relevant_turn_ids) >= 2 for query in fixture.queries))
+    general = int(any(query.query_type == "general" for query in fixture.queries))
+    query_count = len(fixture.queries)
+    return has_specific_span, multi_span, general, query_count
 
 
 def _first(mapping: dict[str, Any], *keys: str, default: Any = None) -> Any:

@@ -12,9 +12,11 @@ def main() -> int:
     parser.add_argument("--raw", default="data/raw/qmsum")
     parser.add_argument("--out", default="data/processed/meeting_fixtures/qmsum/tiny10")
     parser.add_argument("--manifest", default="data/manifests/qmsum_tiny10_manifest.jsonl")
+    parser.add_argument("--limit", type=int, default=10)
+    parser.add_argument("--seed", type=int, default=20260611)
     args = parser.parse_args()
     try:
-        fixtures = prepare_tiny10(Path(args.raw), Path(args.out), Path(args.manifest))
+        fixtures = prepare_tiny10(Path(args.raw), Path(args.out), Path(args.manifest), limit=args.limit, seed=args.seed)
     except FileNotFoundError:
         print(DOWNLOAD_INSTRUCTIONS, file=sys.stderr)
         return 2
