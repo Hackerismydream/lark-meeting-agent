@@ -1,6 +1,6 @@
 # OapiLarkProvider Status
 
-`CliLarkProvider` is useful for local real smoke and diagnostics. Production Feishu bot deployment now has a thin OpenAPI-backed provider boundary behind `LarkToolAdapter`.
+`CliLarkProvider` is useful for local real smoke and diagnostics. Production Feishu bot deployment now has an OpenAPI-backed provider boundary behind `LarkToolAdapter`.
 
 ## Provider Roles
 
@@ -34,6 +34,14 @@ Write operations support `dry_run=True` previews without sending HTTP. Real writ
 
 The current provider accepts an already-issued access token through constructor injection or `LARK_OAPI_ACCESS_TOKEN`.
 
+Provider errors are classified as:
+
+- `invalid_token`
+- `missing_scope`
+- `permission_denied`
+- `rate_limit`
+- `unavailable`
+
 Still-open production work:
 
 - app ID and app secret,
@@ -55,4 +63,4 @@ Still-open production work:
 
 ## Current Status
 
-Implemented as a thin standard-library HTTP provider with fake-runner tests. Real Feishu app deployment, token refresh, scope verification, and end-to-end OpenAPI smoke remain pending. Until those are verified, this is an OpenAPI provider boundary, not a production deployment claim.
+Implemented as a standard-library HTTP provider in `nanobot/meeting/lark_oapi_provider.py` with fake-runner tests, schema validation, dry-run write previews, approval gating through `LarkToolAdapter`, and classified provider errors. Real Feishu app deployment, token refresh, scope verification, and end-to-end OpenAPI smoke remain pending. Until those are verified, this is an OpenAPI provider boundary, not a production deployment claim.
