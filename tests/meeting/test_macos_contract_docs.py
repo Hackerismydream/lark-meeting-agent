@@ -32,6 +32,7 @@ def test_macos_contract_doc_lists_companion_api_endpoints() -> None:
 def test_macos_contract_doc_does_not_claim_asr_or_production_release() -> None:
     text = Path("docs/MACOS_COMPANION_APP.md").read_text().lower()
 
-    assert "does not implement the backend companion api or swift app yet" in text
+    assert "phase 3 macos shell is implemented" in text
+    assert "deferred to later v1.1 phases" in text
     assert "claim asr/audio transcription support" in text
     assert "app store release" not in text

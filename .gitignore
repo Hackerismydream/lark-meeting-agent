@@ -45,6 +45,7 @@ dmypy.json
 # Build & packaging
 dist/
 build/
+apps/macos/**/.build/
 *.manifest
 *.spec
 pip-wheel-metadata/

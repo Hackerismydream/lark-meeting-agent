@@ -108,8 +108,42 @@ The request must include explicit `operation_ids`. A vague "approve all" action 
 - Backend stale-run, provider-mismatch, already-completed, rejected, or permission errors must be displayed and must not trigger silent retry.
 - The app does not bypass backend access policy.
 
-## Companion API Status
+## Implementation Status
 
 The backend Companion API adapter is implemented in `nanobot/meeting/companion_api.py` with typed models in `nanobot/meeting/companion_models.py`. It is an in-process adapter that can be mounted by a future HTTP layer.
 
-The Swift app is not implemented yet.
+The Phase 3 macOS shell is implemented in `apps/macos/LarkMeetingAgent`.
+
+Current shell capabilities:
+
+- Swift Package with `LarkMeetingAgent` executable target.
+- SwiftUI `MenuBarExtra` entry for Agent status.
+- Settings view for API base URL, environment label, and notification preference.
+- API client for `GET /v1/agent/status`.
+- Bearer token injection from a credential store.
+- Keychain-backed credential store plus in-memory test store.
+- Core smoke runner covering status decode, bearer token header injection, and credential round trip.
+
+Deferred to later V1.1 phases:
+
+- approval inbox,
+- user notifications,
+- pre-brief trace viewer,
+- memory search,
+- transcript upload,
+- packaging, signing, and notarization docs.
+
+## Phase 3 Validation
+
+Validated on this workstation:
+
+```bash
+swift build --package-path apps/macos/LarkMeetingAgent
+swift run --package-path apps/macos/LarkMeetingAgent LarkMeetingAgentCoreSmokeTests
+uv run python -m compileall nanobot/meeting nanobot/agent/tools/lark_meeting.py
+openspec validate macos-app-shell-status
+```
+
+`swift test --package-path apps/macos/LarkMeetingAgent` is intentionally not the Phase 3 Swift gate on this machine because the active Command Line Tools SwiftPM environment does not provide XCTest or Swift Testing modules. The package therefore uses an executable smoke runner until a full Xcode test runtime is available.
+
+`xcodebuild` is blocked on this workstation because `xcode-select` points to CommandLineTools rather than a full Xcode installation.
